@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>부스 배치 시뮬레이터</title>
+  <meta name="description" content="수업나눔페스타 전시 부스를 실제 크기(cm)로 3D 배치해 보는 시뮬레이터">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700;800&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+
+  <!-- three.js (CDN, ES module) -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="app">
+    <!-- ============ 설정 패널 ============ -->
+    <aside id="panel" aria-label="설정 패널">
+      <header class="panel-head">
+        <div class="brand">
+          <span class="logo">▣</span>
+          <div>
+            <h1>부스 배치 시뮬레이터</h1>
+            <p id="save-state" class="muted">자동 저장됨</p>
+          </div>
+        </div>
+        <button id="btn-panel-close" class="icon-btn" title="패널 접기" aria-label="패널 접기">«</button>
+      </header>
+      <nav class="tabs" role="tablist">
+        <button data-tab="booth" class="tab active">부스</button>
+        <button data-tab="add" class="tab">추가</button>
+        <button data-tab="sel" class="tab">선택<span id="sel-dot" class="dot"></span></button>
+        <button data-tab="layers" class="tab">목록<span id="warn-count" class="badge-warn"></span></button>
+        <button data-tab="file" class="tab">파일</button>
+      </nav>
+      <div class="tab-body">
+        <section id="tab-booth" class="tab-pane active"></section>
+        <section id="tab-add" class="tab-pane"></section>
+        <section id="tab-sel" class="tab-pane"></section>
+        <section id="tab-layers" class="tab-pane"></section>
+        <section id="tab-file" class="tab-pane"></section>
+      </div>
+    </aside>
+
+    <!-- ============ 3D 뷰 ============ -->
+    <main id="viewport">
+      <div id="toolbar">
+        <button id="btn-panel-open" class="tb-btn panel-open" title="설정 패널 열기">☰ <span>설정</span></button>
+        <div class="tb-group" role="group" aria-label="시점">
+          <button class="tb-btn" data-view="front" title="정면 (1)">정면</button>
+          <button class="tb-btn" data-view="left" title="좌측 (2)">좌측</button>
+          <button class="tb-btn" data-view="right" title="우측 (3)">우측</button>
+          <button class="tb-btn" data-view="top" title="평면도 (4)">평면도</button>
+          <button class="tb-btn" data-view="diag" title="대각선 조감 (5)">조감</button>
+          <button class="tb-btn" data-view="eye" title="관람객 눈높이 150cm 걷기 (6)">눈높이</button>
+        </div>
+        <div class="tb-group">
+          <button class="tb-btn" id="btn-focus" title="선택한 물체로 이동 (F)">◎ 포커스</button>
+          <button class="tb-btn toggle" id="btn-grid" title="바닥 눈금 10/50/100cm (G)">격자</button>
+          <button class="tb-btn toggle" id="btn-dims" title="치수선 (M)">치수</button>
+          <label class="tb-select" title="드래그 시 맞춤 간격">스냅
+            <select id="sel-snap">
+              <option value="0">끔</option>
+              <option value="1">1cm</option>
+              <option value="5">5cm</option>
+              <option value="10">10cm</option>
+            </select>
+          </label>
+        </div>
+        <div class="tb-group">
+          <button class="tb-btn" id="btn-undo" title="실행취소 (Ctrl+Z)">↶</button>
+          <button class="tb-btn" id="btn-redo" title="다시실행 (Ctrl+Shift+Z)">↷</button>
+          <button class="tb-btn" id="btn-shot" title="스크린샷 PNG 저장">📷</button>
+        </div>
+      </div>
+
+      <div id="canvas-host"></div>
+
+      <!-- 선택 물체 빠른 조작 막대 -->
+      <div id="selbar" hidden></div>
+
+      <!-- 걷기 모드 방향 패드 (터치용) -->
+      <div id="walkpad" aria-label="걷기 이동">
+        <button data-k="q" title="왼쪽으로 돌기">⟲</button>
+        <button data-k="w" title="앞으로">▲</button>
+        <button data-k="e" title="오른쪽으로 돌기">⟳</button>
+        <button data-k="a" title="왼쪽으로">◀</button>
+        <button data-k="s" title="뒤로">▼</button>
+        <button data-k="d" title="오른쪽으로">▶</button>
+        <button class="walk-exit" id="btn-walk-exit">걷기 종료</button>
+      </div>
+
+      <div id="hint">왼쪽 드래그: 회전 · 휠/핀치: 확대 · 오른쪽 드래그/두 손가락: 이동 · 물체 드래그: 옮기기</div>
+      <div id="loading">3D 화면을 준비하는 중…</div>
+    </main>
+  </div>
+
+  <!-- 처음 설정 / 새 부스 창 -->
+  <div id="modal" class="modal" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title"></div>
+  </div>
+  <input type="file" id="file-json" accept=".json,application/json" hidden>
+  <input type="file" id="file-image" accept="image/png,image/jpeg,image/webp,application/pdf,.pdf" hidden>
+  <div id="toast" aria-live="polite"></div>
+
+  <!-- 앱 모듈 (일반 스크립트: file:// 로 더블클릭해도 동작) -->
+  <script src="js/core.js"></script>
+  <script src="js/scene.js"></script>
+  <script src="js/booth.js"></script>
+  <script src="js/panels.js"></script>
+  <script src="js/items.js"></script>
+  <script src="js/interaction.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/app.js"></script>
+
+  <!-- three.js 를 불러온 뒤 앱 시작 -->
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    window.THREE = THREE;
+    BS.OrbitControls = OrbitControls;
+    try { BS.app.start(); }
+    catch (e) {
+      console.error(e);
+      document.getElementById('loading').textContent = '오류가 발생했습니다: ' + e.message;
+    }
+  </script>
+  <script>
+    // CDN 을 불러오지 못한 경우 안내
+    setTimeout(function () {
+      if (!window.THREE) document.getElementById('loading').innerHTML =
+        '3D 라이브러리(three.js)를 불러오지 못했습니다.<br>인터넷 연결을 확인한 뒤 새로고침 해 주세요.';
+    }, 12000);
+  </script>
+</body>
+</html>
