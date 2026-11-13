@@ -32,23 +32,26 @@
           <span class="logo">▣</span>
           <div>
             <h1>부스 배치 시뮬레이터</h1>
-            <p id="save-state" class="muted">자동 저장됨</p>
-            <p id="cloud-state" class="muted"></p>
+            <p id="save-state" class="muted" title=""></p>
           </div>
         </div>
         <button id="btn-panel-close" class="icon-btn" title="패널 접기" aria-label="패널 접기">«</button>
       </header>
+      <!-- 새로 시작 / 불러오기 -->
+      <div class="start-bar">
+        <button type="button" id="btn-new" class="btn primary">＋ 새로 시작</button>
+        <button type="button" id="btn-open" class="btn">📂 불러오기</button>
+      </div>
+      <p class="nodoc-hint">[새로 시작]으로 부스를 만들거나, [불러오기]로 저장된 배치를 여세요.</p>
       <nav class="tabs" role="tablist">
-        <button data-tab="booth" class="tab active">부스</button>
-        <button data-tab="add" class="tab">추가</button>
-        <button data-tab="sel" class="tab">선택<span id="sel-dot" class="dot"></span></button>
+        <button data-tab="booth" class="tab active">부스 설치</button>
+        <button data-tab="add" class="tab">물품 추가</button>
         <button data-tab="layers" class="tab">목록<span id="warn-count" class="badge-warn"></span></button>
-        <button data-tab="file" class="tab">파일</button>
+        <button data-tab="file" class="tab">저장·인쇄</button>
       </nav>
       <div class="tab-body">
         <section id="tab-booth" class="tab-pane active"></section>
         <section id="tab-add" class="tab-pane"></section>
-        <section id="tab-sel" class="tab-pane"></section>
         <section id="tab-layers" class="tab-pane"></section>
         <section id="tab-file" class="tab-pane"></section>
       </div>
@@ -83,7 +86,6 @@
           <button class="tb-btn" id="btn-undo" title="실행취소 (Ctrl+Z)">↶</button>
           <button class="tb-btn" id="btn-redo" title="다시실행 (Ctrl+Shift+Z)">↷</button>
           <button class="tb-btn" id="btn-shot" title="스크린샷 PNG 저장">📷</button>
-          <button class="tb-btn" id="btn-cloud" hidden>☁ 저장</button>
         </div>
       </div>
 
@@ -103,9 +105,31 @@
         <button class="walk-exit" id="btn-walk-exit">걷기 종료</button>
       </div>
 
-      <div id="hint">왼쪽 드래그: 회전 · 휠/핀치: 확대 · 오른쪽 드래그/두 손가락: 이동 · 물체 드래그: 옮기기</div>
+      <div id="hint">왼쪽 드래그: 회전 · 휠: 확대 · 오른쪽 드래그/두 손가락·방향키: 이동 · 물체 드래그: 옮기기</div>
+
+      <!-- 아무 배치도 열지 않았을 때 -->
+      <div id="welcome">
+        <div class="welcome-card">
+          <div class="logo big">▣</div>
+          <h2>부스 배치 시뮬레이터</h2>
+          <p>전시 부스를 실제 크기(cm)로 배치해 보세요.</p>
+          <div class="welcome-actions">
+            <button type="button" class="btn primary" data-act="new">＋ 새로 시작</button>
+            <button type="button" class="btn" data-act="open">📂 불러오기</button>
+          </div>
+        </div>
+      </div>
       <div id="loading">3D 화면을 준비하는 중…</div>
     </main>
+
+    <!-- ============ 선택 항목 설정 (오른쪽) ============ -->
+    <aside id="inspector" aria-label="선택 항목 설정">
+      <header class="insp-head">
+        <b id="insp-title">선택 항목</b>
+        <button type="button" id="btn-insp-close" class="icon-btn" title="선택 해제 (Esc)" aria-label="닫기">✕</button>
+      </header>
+      <div id="insp-body"></div>
+    </aside>
   </div>
 
   <!-- 처음 설정 / 새 부스 창 -->

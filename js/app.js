@@ -7,7 +7,7 @@
 (function (BS) {
   'use strict';
   const U = BS.util;
-  const A = BS.app = { selId: null, warnings: {} };
+  const A = BS.app = { selId: null, warnings: {}, hasDoc: false };
 
   /* ---------------------------------------------------------------
    * 시작
@@ -16,19 +16,16 @@
     BS.scene.init(document.getElementById('canvas-host'));
     BS.interaction.init();
 
+    // 이 브라우저에서 작업하던 배치가 있으면 이어서, 없으면(처음 방문) 빈 화면
     const loaded = BS.storage.loadLocal();
-    const cloudLink = BS.cloud.urlId(); // ?id= 공유 링크로 열었는지
-    if (!loaded) A.loadDemo();
     A.rebuildAll();
     BS.history.reset();
+    A.setDoc(loaded);
     BS.ui.init();
     BS.scene.setView('diag');
     BS.scene.tween = null; // 첫 화면은 바로
     jumpDiag();
-
-    // 저장된 장면이 없으면(처음 방문) 부스 형태 설정 창을 먼저 띄움
-    if (!loaded && !cloudLink) BS.ui.openSetup(true);
-    // 클라우드(MongoDB) 저장 배치 불러오기 / 연결 상태 표시
+    // 클라우드: ?id= 링크로 열었으면 불러오기, 이어서 편집이면 최신 버전 확인
     BS.cloud.startup();
 
     BS.on('restored', () => { A.rebuildAll(); if (A.selId && !BS.find(A.selId)) A.select(null); BS.ui.renderAll(); });
@@ -87,10 +84,38 @@
     BS.assets = {};
   };
 
-  /** 빈 부스로 새로 시작 */
-  A.newBooth = function (shape, W, D, H, withDemo) {
-    // 새 부스는 클라우드 링크와 분리된 새 배치로 시작
-    if (BS.cloud.id) BS.cloud.disconnect();
+  /**
+   * 배치가 열려 있는지 표시. 닫혀 있으면 가운데는 빈 화면(전시장 바닥만)이고
+   * 왼쪽에는 [새로 시작] [불러오기]만 보인다.
+   */
+  A.setDoc = function (on) {
+    A.hasDoc = !!on;
+    document.body.classList.toggle('no-doc', !on);
+    const S = BS.scene;
+    S.boothGroup.visible = S.panelGroup.visible = S.itemGroup.visible = !!on;
+    S.gridGroup.visible = !!on && !!BS.state.settings.grid;
+    S.dimGroup.visible = !!on && !!BS.state.settings.dims;
+    S.selDimGroup.visible = !!on;
+    if (!on && A.selId) A.select(null);
+    S.requestRender();
+    if (BS.cloud) BS.cloud.render();
+  };
+
+  /** 배치 닫기 (클라우드에서 삭제한 뒤 등) → 빈 화면 */
+  A.closeDoc = function () {
+    Object.assign(BS.state, { title: '', booth: BS.defaults.booth(), panels: [], items: [] });
+    BS.assets = {};
+    A.rebuildAll();
+    BS.history.reset();
+    A.setDoc(false);
+    BS.storage.clearLocal();
+    BS.ui.renderAll();
+  };
+
+  /** 새 배치 시작 (title: 배치 이름) */
+  A.newBooth = function (shape, W, D, H, withDemo, title) {
+    // 지금 배치는 이미 자동 저장되어 있음 → 연결만 끊고 새 배치로
+    if (BS.cloud.id || BS.cloud.pendingCreate) { BS.cloud.flush(); BS.cloud.disconnect(); }
     if (withDemo) A.loadDemo(shape, W, D, H);
     else {
       Object.assign(BS.state, {
@@ -98,9 +123,12 @@
       });
       BS.assets = {};
     }
+    if (title) BS.state.title = title;
     A.select(null);
     A.rebuildAll();
-    A.commit();
+    BS.history.reset();
+    A.setDoc(true);
+    BS.storage.saveLocal();
     BS.ui.renderAll();
     jumpDiag();
   };
@@ -208,8 +236,20 @@
     if (over.label) delete it.label;
     const n = BS.state.items.filter((i) => i.type === type).length + 1;
     it.name = (over.name || BS.items.LIB[type].label) + (n > 1 ? ' ' + n : '');
-    const pos = freeSpot(it.w, it.d);
-    it.x = pos.x; it.z = pos.z;
+    // 작품·노트북 같은 작은 물건: 선택한 테이블(받침)이 있으면 그 위에 놓기
+    const sel = A.selected();
+    const def = BS.items.LIB[type] || {};
+    if (def.derive) BS.items.derive(it);
+    if (def.stack && sel && sel.kind === 'item' && (BS.items.LIB[sel.type] || {}).support) {
+      const r = U.rad(sel.rot || 0);
+      const onTop = BS.items.riders(sel).length;
+      const lim = Math.max(0, sel.w / 2 - it.w / 2);
+      const off = U.clamp([0, -1, 1][onTop % 3] * (it.w + 5), -lim, lim); // 겹치지 않게 조금씩 옆으로
+      it.x = sel.x + Math.cos(r) * off; it.z = sel.z - Math.sin(r) * off; it.rot = sel.rot || 0;
+    } else {
+      const pos = freeSpot(it.w, it.d);
+      it.x = pos.x; it.z = pos.z;
+    }
     BS.state.items.push(it);
     A.changed('items');
     A.commit();

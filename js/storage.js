@@ -29,6 +29,7 @@
 
   let warnedQuota = false;
   ST.saveLocal = function () {
+    if (!BS.app.hasDoc) return; // 열린 배치가 없으면 저장하지 않음
     try {
       localStorage.setItem(KEY, JSON.stringify(payload(true, true)));
       BS.emit('saved', true);
@@ -94,6 +95,7 @@
         if (!ST.applyPayload(o)) return;
         BS.app.select(null);
         BS.app.rebuildAll();
+        BS.app.setDoc(true);
         BS.app.commit();
         BS.ui.renderAll();
         BS.scene.setView('diag');

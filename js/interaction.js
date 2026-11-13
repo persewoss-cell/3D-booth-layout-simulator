@@ -35,6 +35,8 @@
     }, { passive: false });
     dom.addEventListener('dblclick', () => { if (BS.app.selId) BS.app.focus(); });
     window.addEventListener('keydown', onKey);
+    window.addEventListener('keyup', (e) => { const k = e.key.toLowerCase(); if (BS.scene.panKeys[k]) BS.scene.panKeys[k] = false; if (k === 'shift') BS.scene.panFast = false; });
+    window.addEventListener('blur', () => { BS.scene.panKeys = {}; });
   };
 
   /* ---------------------------------------------------------------
@@ -201,7 +203,7 @@
     if (mod && key === 'y') { e.preventDefault(); BS.history.redo(); return; }
     if (BS.isTyping()) return;
     if (mod && key === 'd') { e.preventDefault(); BS.app.duplicate(); return; }
-    if (mod && key === 's') { e.preventDefault(); if (BS.cloud.available()) BS.cloud.save(); else BS.storage.exportJSON(); return; }
+    if (mod && key === 's') { e.preventDefault(); if (BS.cloud.available()) BS.cloud.save({ manual: true }); else BS.storage.exportJSON(); return; }
     if (key === 'escape') {
       if (BS.ui.closeModal()) return;
       if (S.mode === 'walk') { S.setMode('orbit'); S.setView('diag'); return; }
@@ -212,6 +214,13 @@
     if (key === 'r' && BS.app.selId) { BS.app.rotate(e.shiftKey ? -15 : 15); return; }
     if (key === 'f' && BS.app.selId) { BS.app.focus(); return; }
     if (S.mode === 'walk') return; // 걷기 모드에서는 WASD/화살표가 이동용
+    // 아무것도 선택하지 않았을 때: 방향키로 화면을 앞뒤·좌우로 평행 이동
+    if (key.startsWith('arrow') && !BS.app.selId && BS.app.hasDoc) {
+      e.preventDefault();
+      S.panKeys[key] = true;
+      S.panFast = e.shiftKey;
+      return;
+    }
     if (key.startsWith('arrow') && BS.app.selId) {
       e.preventDefault();
       const st = e.shiftKey ? 10 : Math.max(1, BS.state.settings.snap || 1);

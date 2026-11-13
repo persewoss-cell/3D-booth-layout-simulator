@@ -204,11 +204,10 @@ window.BS = window.BS || {};
       return Object.assign({
         id: U.uid('it'), kind: 'item', type,
         name: def ? def.label : type,
-        w: base.w, d: base.d, h: base.h, color: base.color,
         x: 0, z: 0, rot: 0,
         cloth: false,
         locked: false, hidden: false,
-      }, over || {});
+      }, U.clone(base), over || {});
     },
 
     settings() {
@@ -308,6 +307,7 @@ window.BS = window.BS || {};
   BS.usedAssets = function () {
     const used = {};
     for (const p of BS.state.panels) for (const c of p.cells) if (c.img && BS.assets[c.img]) used[c.img] = BS.assets[c.img];
+    for (const it of BS.state.items) if (it.img && BS.assets[it.img]) used[it.img] = BS.assets[it.img];
     return used;
   };
 })(window.BS);

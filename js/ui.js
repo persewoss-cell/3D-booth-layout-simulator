@@ -1,5 +1,6 @@
 /* =====================================================================
- * ui.js — 설정 패널(부스/추가/선택/목록/파일) · 툴바 · 처음 설정 창
+ * ui.js — 왼쪽 설정 패널(부스 설치/물품 추가/목록/저장·인쇄) · 오른쪽 선택 항목 패널
+ *         · 툴바 · 새로 시작 창
  * ---------------------------------------------------------------------
  *  입력값을 바꾸면(input) 즉시 3D 에 반영하고, 입력이 끝나면(change)
  *  실행취소 지점을 만든다.
@@ -8,7 +9,15 @@
   'use strict';
   const U = BS.util;
   const el = U.el;
-  const UI = BS.ui = { tab: 'booth', cellIdx: 0, live: [] };
+  const UI = BS.ui = { tab: 'booth', cellIdx: 0, live: [], folds: loadFolds() };
+
+  /** 접기/펼치기 상태 기억 (브라우저별) */
+  function loadFolds() {
+    try { return Object.assign({ 'file.cloud': true }, JSON.parse(localStorage.getItem('boothSimulator.folds') || '{}')); }
+    catch { return { 'file.cloud': true }; }
+  }
+  function saveFolds() { try { localStorage.setItem('boothSimulator.folds', JSON.stringify(UI.folds)); } catch { /* 무시 */ } }
+  const isNarrow = () => window.matchMedia('(max-width: 820px)').matches;
 
   /* ---------------------------------------------------------------
    * 초기화
@@ -36,7 +45,12 @@
     document.getElementById('btn-undo').onclick = () => BS.history.undo();
     document.getElementById('btn-redo').onclick = () => BS.history.redo();
     document.getElementById('btn-shot').onclick = () => BS.storage.screenshot();
-    document.getElementById('btn-cloud').onclick = () => BS.cloud.save();
+    // 새로 시작 / 불러오기 (왼쪽 위 + 빈 화면 가운데)
+    document.getElementById('btn-new').onclick = () => UI.openNew();
+    document.getElementById('btn-open').onclick = () => BS.cloud.openDialog();
+    document.querySelector('#welcome [data-act=new]').onclick = () => UI.openNew();
+    document.querySelector('#welcome [data-act=open]').onclick = () => BS.cloud.openDialog();
+    document.getElementById('btn-insp-close').onclick = () => BS.app.select(null);
     document.getElementById('btn-walk-exit').onclick = () => { BS.scene.setMode('orbit'); BS.scene.setView('diag'); };
 
     // 걷기 패드 (누르고 있는 동안 이동)
@@ -56,19 +70,17 @@
     document.getElementById('modal').addEventListener('pointerdown', (e) => { if (e.target.id === 'modal' && !UI.modalLocked) UI.closeModal(); });
 
     // 이벤트 구독
-    BS.on('select', (id, opts) => {
+    BS.on('select', (id) => {
       UI.cellIdx = 0;
       renderSel(); renderLayers(); renderSelbar();
-      if (id && opts && opts.scroll && !narrow() && UI.tab !== 'sel') UI.showTab('sel');
+      // 선택하면 오른쪽 설정 패널이 열림 (모바일은 [속성] 버튼으로 열기)
+      document.body.classList.toggle('has-sel', !!id);
+      if (!id) document.body.classList.remove('insp-open');
     });
     BS.on('entityMoved', () => { UI.refreshLive(); renderSelbar(); });
     BS.on('warnings', (w) => { updateWarnBadge(w); renderSelWarn(); UI.layerStatusOnly(); });
     BS.on('history', updateUndoButtons);
-    BS.on('saved', (ok) => {
-      const s = document.getElementById('save-state');
-      s.textContent = ok === true ? `자동 저장됨 · ${new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}` : ok === 'partial' ? '자동 저장됨 (이미지 제외)' : '자동 저장 실패';
-      s.classList.toggle('warn', ok !== true);
-    });
+    BS.on('saved', (ok) => { UI.localSaved = ok; BS.cloud.render(); });
     BS.on('viewMode', (m) => {
       document.querySelectorAll('[data-view]').forEach((b) => b.classList.toggle('active',
         (m === 'ortho' && b.dataset.view === 'top') || (m === 'walk' && b.dataset.view === 'eye')));
@@ -95,6 +107,7 @@
 
   UI.renderAll = function () {
     renderBooth(); renderAdd(); renderSel(); renderLayers(); renderFile(); renderSelbar();
+    document.body.classList.toggle('has-sel', !!BS.app.selId);
     updateToggles(); updateWarnBadge(BS.app.warnings);
     document.getElementById('sel-snap').value = String(BS.state.settings.snap);
   };
@@ -102,8 +115,8 @@
   UI.toggleSetting = function (key) {
     const s = BS.state.settings;
     s[key] = !s[key];
-    if (key === 'grid') BS.scene.gridGroup.visible = s.grid;
-    if (key === 'dims') { BS.scene.dimGroup.visible = s.dims; BS.app.refreshSelDims(); }
+    if (key === 'grid') BS.scene.gridGroup.visible = s.grid && BS.app.hasDoc;
+    if (key === 'dims') { BS.scene.dimGroup.visible = s.dims && BS.app.hasDoc; BS.app.refreshSelDims(); }
     BS.scene.requestRender();
     updateToggles();
     BS.storage.autosave();
@@ -187,6 +200,20 @@
   }
   function row(label, control, hint) {
     return el('div', { class: 'row' }, el('label', { class: 'lbl' }, label), el('div', { class: 'ctl' }, control, hint ? el('div', { class: 'hint' }, hint) : null));
+  }
+  /** 제목을 누르면 접히고 펼쳐지는 큰 섹션 */
+  function fold(key, title, ...children) {
+    const d = el('details', { class: 'fold' }, el('summary', null, title), el('div', { class: 'fold-body' }, ...children));
+    d.open = !!UI.folds[key];
+    d.addEventListener('toggle', () => { UI.folds[key] = d.open; saveFolds(); });
+    return d;
+  }
+  /** 섹션 안의 작은 접기 항목 (예: 사각 테이블) */
+  function sub(key, title, ...children) {
+    const d = el('details', { class: 'sub' }, el('summary', null, title), el('div', { class: 'sub-body' }, ...children));
+    d.open = !!UI.folds[key];
+    d.addEventListener('toggle', () => { UI.folds[key] = d.open; saveFolds(); });
+    return d;
   }
   function section(title, ...children) {
     return el('div', { class: 'section' }, title ? el('h3', null, title) : null, ...children);
@@ -281,44 +308,91 @@
     ));
 
     pane.appendChild(section('부스 이름',
-      text({ label: '제목', get: () => BS.state.title, set: (v) => { BS.state.title = v; }, what: 'none' }),
-      button('처음 설정 창 다시 열기', () => UI.openSetup(false), 'wide'),
+      text({ label: '배치 이름', get: () => BS.state.title, set: (v) => { BS.state.title = v; }, what: 'none', after: () => BS.cloud.render() }),
+      el('p', { class: 'hint' }, '[불러오기] 목록에 이 이름으로 보입니다.'),
     ));
   }
 
   /** 벽이 꺼져서 떠 있는 벽 현수막 안내 */
   function warnFloating() {
     const n = BS.state.panels.filter((p) => p.mount === 'wall' && !BS.state.booth.walls[p.wall].on).length;
-    if (n) BS.toast(`꺼진 벽에 붙은 현수막이 ${n}개 있습니다. [선택] 탭에서 다른 벽으로 옮기거나 '바닥에 세우기'로 바꾸세요.`, 'warn', 5500);
+    if (n) BS.toast(`꺼진 벽에 붙은 현수막이 ${n}개 있습니다. 현수막을 눌러 오른쪽 설정에서 다른 벽으로 옮기거나 '바닥에 세우기'로 바꾸세요.`, 'warn', 5500);
   }
 
   /* ---------------------------------------------------------------
-   * [추가] 탭 — 현수막 · 자유 패널 · 집기 라이브러리
+   * [물품 추가] 탭 — 모든 큰 제목은 접혀 있고 누르면 펼쳐짐
    * ------------------------------------------------------------- */
   const newBanner = { name: '새 현수막', w: 120, h: 90, wall: 'back', y: 100, cols: 1, rows: 1 };
+  /** 추가 양식 입력값 (탭을 다시 그려도 유지) */
+  const F = UI.addForm = {
+    rect: { w: 180, d: 60, h: 72, cloth: false },
+    round: { w: 90, h: 72, cloth: false },
+    chair: { w: 45, d: 50, h: 85 },
+    stool: { w: 38, h: 65 },
+    paper: { pose: 'stand', land: false, pw: 21, ph: 29.7 },
+    book: { pose: 'closed', pw: 15, ph: 22, thick: 2 },
+    acrylic: { pw: 21, ph: 29.7 },
+  };
+  /** 양식용 숫자 입력 (3D 에는 바로 반영하지 않음) */
+  function fnum(obj, key, label, unit = 'cm', min = 0.5) {
+    const inp = el('input', { type: 'number', min, step: 0.5, inputmode: 'decimal' });
+    inp.value = U.fmt(obj[key]);
+    inp.oninput = () => { const v = parseFloat(inp.value); if (Number.isFinite(v) && v >= min) obj[key] = v; };
+    return row(label, el('div', { class: 'num-wrap' }, inp, el('span', { class: 'unit' }, unit)));
+  }
+  function fcheck(obj, key, label) {
+    const inp = el('input', { type: 'checkbox', checked: !!obj[key] });
+    inp.onchange = () => { obj[key] = inp.checked; };
+    return el('label', { class: 'check' }, inp, ' ', label);
+  }
+  function fseg(obj, key, options, onChange) {
+    const wrap = el('div', { class: 'seg' });
+    options.forEach(([v, t]) => {
+      const b = el('button', { type: 'button', class: obj[key] === v ? 'on' : '' }, t);
+      b.onclick = () => { obj[key] = v; wrap.querySelectorAll('button').forEach((x) => x.classList.remove('on')); b.classList.add('on'); if (onChange) onChange(v); };
+      wrap.appendChild(b);
+    });
+    return wrap;
+  }
+  function examples(label, list) {
+    return el('div', { class: 'preset-row examples' }, el('span', { class: 'muted' }, label),
+      ...list.map(([t, fn]) => button(t, fn, 'chip')));
+  }
+  function libGrid(list) {
+    const grid = el('div', { class: 'lib-grid' });
+    for (const p of list) {
+      const def = BS.items.LIB[p.type];
+      const d = Object.assign({}, def.defaults, p.over);
+      const size = def.round ? `Ø${d.w}×${d.h}` : `${d.w}×${d.d}×${d.h}`;
+      grid.appendChild(button(`${p.label}\n${size}`, () => BS.app.addItem(p.type, Object.assign({}, p.over)), 'lib-btn'));
+    }
+    return grid;
+  }
+
   function renderAdd() {
     const pane = document.getElementById('tab-add');
     pane.innerHTML = '';
+    pane.appendChild(el('p', { class: 'hint', style: { margin: '10px 0 4px' } }, '제목을 누르면 펼쳐집니다. 작품·노트북 등은 테이블을 먼저 선택한 뒤 추가하면 그 위에 놓입니다.'));
+
+    // 1) 벽 현수막
     const nb = newBanner;
-    const loc = (k, v) => { nb[k] = v; };
     const f = (label, k, o = {}) => {
       const inp = el('input', { type: o.type || 'number', min: o.min, step: o.step || 1 });
       inp.value = nb[k];
-      inp.oninput = () => loc(k, o.type === 'text' ? inp.value : U.num(inp.value, nb[k]));
+      inp.oninput = () => { nb[k] = o.type === 'text' ? inp.value : U.num(inp.value, nb[k]); };
       return row(label, o.type === 'text' ? inp : el('div', { class: 'num-wrap' }, inp, el('span', { class: 'unit' }, o.unit === undefined ? 'cm' : o.unit)));
     };
     const wallSel = el('select', null, ...BS.WALL_KEYS.map((k) => el('option', { value: k }, BS.WALL_LABEL[k] + (BS.state.booth.walls[k].on ? '' : ' (꺼짐)'))));
     wallSel.value = nb.wall; wallSel.onchange = () => { nb.wall = wallSel.value; };
-
-    pane.appendChild(section('벽 현수막 만들기',
+    pane.appendChild(fold('add.wall', '벽 현수막 만들기',
       f('이름', 'name', { type: 'text' }),
       el('div', { class: 'row2' }, f('가로', 'w', { min: 1 }), f('세로', 'h', { min: 1 })),
       row('붙일 벽', wallSel),
-      f('바닥→하단 높이', 'y', { min: 0 }),
+      f('바닥→하단', 'y', { min: 0 }),
       el('div', { class: 'row2' }, f('칸: 열', 'cols', { min: 1, unit: '열' }), f('행', 'rows', { min: 1, unit: '행' })),
       button('＋ 벽에 현수막 추가', () => {
         const inf = BS.booth.wallInfo(nb.wall);
-        if (!inf.on) BS.toast(`${BS.WALL_LABEL[nb.wall]}이 꺼져 있습니다. [부스] 탭에서 켜 주세요.`, 'warn', 4000);
+        if (!inf.on) BS.toast(`${BS.WALL_LABEL[nb.wall]}이 꺼져 있습니다. [부스 설치] 탭에서 켜 주세요.`, 'warn', 4000);
         const p = BS.defaults.panel({
           name: nb.name || '현수막', w: Math.max(1, nb.w), h: Math.max(1, nb.h), wall: nb.wall,
           y: Math.max(0, nb.y), cols: Math.max(1, nb.cols | 0), rows: Math.max(1, nb.rows | 0),
@@ -327,26 +401,25 @@
         p.cells = p.cells.map((c, i) => BS.defaults.cell({ mode: 'text', title: p.cols * p.rows > 1 ? `칸 ${i + 1}` : p.name, body: '' }));
         BS.app.addPanel(p);
       }, 'primary wide'),
-      el('div', { class: 'preset-row' },
-        el('span', { class: 'muted' }, '프리셋'),
-        button('연구학교 5개교 현수막 (2×3칸, 200×210)', () => {
+      examples('예시 (뒷벽에 바로 추가)', [
+        ['연구학교 5개교 현수막 (2×3칸)', () => {
           const inf = BS.booth.wallInfo('back');
           const p = BS.panels.presetResearchSchools({ wall: 'back' });
           p.u = Math.max(0, (inf.len - p.w) / 2); p.y = Math.max(0, Math.min(20, inf.h - p.h));
           BS.app.addPanel(p);
-        }, 'chip'),
-        button('A0 포스터 84×119', () => addWallPreset('A0 포스터', 84.1, 118.9, 70), 'chip'),
-        button('A1 포스터 59×84', () => addWallPreset('A1 포스터', 59.4, 84.1, 100), 'chip'),
-        button('가로 현수막 300×90', () => addWallPreset('가로 현수막', 300, 90, 140), 'chip'),
-        button('상단 간판 300×40', () => addWallPreset('상단 간판', 300, 40, 195), 'chip'),
-      ),
+        }],
+        ['가로 현수막 300×90', () => addWallPreset('가로 현수막', 300, 90, 140)],
+        ['상단 간판 300×40', () => addWallPreset('상단 간판', 300, 40, 195)],
+      ]),
+      examples('벽에 붙이는 작품 (눈높이 150 중심)', BS.items.PAPER_SIZES.filter(([n]) => !n.startsWith('사진')).map(([n, w, h]) =>
+        [n, () => addWallPreset(`${n} 작품`, w, h, Math.max(0, 150 - h / 2), true)])),
     ));
 
-    // 자유 패널
+    // 2) 패널 · 배너
     const standGrid = el('div', { class: 'lib-grid' });
     const STD = [
       ['rollup', '롤업 배너', 85, 200], ['xbanner', 'X배너', 60, 180], ['sign', '입간판', 60, 90],
-      ['easel', '이젤 위 작품', 60, 80], ['board', '자유 패널', 90, 180],
+      ['easel', '이젤 위 작품', 60, 80], ['board', '패널', 90, 180],
     ];
     for (const [st, label, w, h] of STD) {
       standGrid.appendChild(button(`${label}\n${w}×${h}`, () => {
@@ -358,51 +431,104 @@
         BS.app.addPanel(p);
       }, 'lib-btn'));
     }
-    pane.appendChild(section('자유 패널 (바닥에 세우기)', standGrid));
+    pane.appendChild(fold('add.stand', '패널 · 배너 (바닥에 세우기)', standGrid));
 
-    // 집기
-    for (const g of BS.items.PRESETS) {
-      const grid = el('div', { class: 'lib-grid' });
-      for (const p of g.items) {
-        const def = BS.items.LIB[p.type];
-        const d = Object.assign({}, def.defaults, p.over);
-        grid.appendChild(button(`${p.label}\n${def.round ? 'Ø' + d.w : d.w + '×' + d.d}×${d.h}`, () => BS.app.addItem(p.type, Object.assign({}, p.over)), 'lib-btn'));
-      }
-      pane.appendChild(section(g.group, grid));
-    }
+    // 3) 테이블
+    const clothColor = (on) => (on ? '#1f3a68' : '#f2f2ee');
+    const addRect = (w, d, h) => BS.app.addItem('table-rect', { w, d, h, cloth: F.rect.cloth, color: clothColor(F.rect.cloth), name: '사각 테이블' });
+    const addRound = (w, h) => BS.app.addItem('table-round', { w, d: w, h, cloth: F.round.cloth, color: clothColor(F.round.cloth), name: '원형 테이블' });
+    pane.appendChild(fold('add.table', '테이블',
+      sub('add.table.rect', '사각 테이블',
+        el('div', { class: 'row3' }, fnum(F.rect, 'w', '가로'), fnum(F.rect, 'd', '깊이'), fnum(F.rect, 'h', '높이')),
+        fcheck(F.rect, 'cloth', '천 덮개 씌우기'),
+        button('＋ 이 크기로 추가', () => addRect(F.rect.w, F.rect.d, F.rect.h), 'primary wide'),
+        examples('예시 크기로 바로 추가 (높이 72)', [[180, 60], [180, 45], [150, 60], [120, 60], [120, 45], [75, 75]].map(([w, d]) => [`${w}×${d}`, () => addRect(w, d, 72)]))),
+      sub('add.table.round', '원형 테이블',
+        el('div', { class: 'row2' }, fnum(F.round, 'w', '지름'), fnum(F.round, 'h', '높이')),
+        fcheck(F.round, 'cloth', '천 덮개 씌우기'),
+        button('＋ 이 크기로 추가', () => addRound(F.round.w, F.round.h), 'primary wide'),
+        examples('예시 크기로 바로 추가', [[60, 72], [75, 72], [90, 72], [120, 72], [60, 105]].map(([w, h]) => [h > 100 ? `Ø${w} 스탠딩` : `Ø${w}`, () => addRound(w, h)]))),
+    ));
+
+    // 4) 의자
+    pane.appendChild(fold('add.chair', '의자',
+      sub('add.chair.chair', '의자',
+        el('div', { class: 'row3' }, fnum(F.chair, 'w', '가로'), fnum(F.chair, 'd', '깊이'), fnum(F.chair, 'h', '높이')),
+        button('＋ 이 크기로 추가', () => BS.app.addItem('chair', { w: F.chair.w, d: F.chair.d, h: F.chair.h }), 'primary wide'),
+        examples('예시 크기로 바로 추가', [
+          ['일반 45×50×85', () => BS.app.addItem('chair', { w: 45, d: 50, h: 85 })],
+          ['접이식 44×46×80', () => BS.app.addItem('chair', { w: 44, d: 46, h: 80, name: '접이식 의자' })],
+          ['학생용 40×40×75', () => BS.app.addItem('chair', { w: 40, d: 40, h: 75, name: '학생 의자' })],
+          ['높은 의자 45×45×105', () => BS.app.addItem('chair', { w: 45, d: 45, h: 105, name: '높은 의자' })],
+        ])),
+      sub('add.chair.stool', '스툴 (둥근 의자)',
+        el('div', { class: 'row2' }, fnum(F.stool, 'w', '지름'), fnum(F.stool, 'h', '높이')),
+        button('＋ 이 크기로 추가', () => BS.app.addItem('stool', { w: F.stool.w, d: F.stool.w, h: F.stool.h }), 'primary wide'),
+        examples('예시 크기로 바로 추가', [[38, 45], [38, 65], [35, 75]].map(([w, h]) => [`Ø${w}×${h}`, () => BS.app.addItem('stool', { w, d: w, h })]))),
+    ));
+
+    // 5) 전시 작품
+    const P = F.paper;
+    const paperDims = (w, h) => (P.land ? [h, w] : [w, h]);
+    const addPaper = (name, w, h) => {
+      const [pw, ph] = paperDims(w, h);
+      BS.app.addItem('paper', { pw, ph, pose: P.pose, name: `${name} 작품`, color: P.pose === 'frame' ? '#5b4636' : '#ffffff' });
+    };
+    const B = F.book;
+    const addBook = (name, pw, ph) => BS.app.addItem('book', { pw, ph, thick: B.thick, pose: B.pose, name });
+    pane.appendChild(fold('add.art', '전시 작품',
+      sub('add.art.paper', '지류 작품 (A4·A0·도화지·사진)',
+        row('놓는 방식', fseg(P, 'pose', [['stand', '세워 놓기'], ['flat', '눕히기'], ['frame', '액자']])),
+        row('방향', fseg(P, 'land', [[false, '세로'], [true, '가로']])),
+        examples('규격으로 바로 추가', BS.items.PAPER_SIZES.map(([n, w, h]) => [n, () => addPaper(n, w, h)])),
+        el('div', { class: 'row2' }, fnum(P, 'pw', '가로'), fnum(P, 'ph', '세로')),
+        button('＋ 직접 입력한 크기로 추가', () => BS.app.addItem('paper', { pw: P.pw, ph: P.ph, pose: P.pose, name: '지류 작품', color: P.pose === 'frame' ? '#5b4636' : '#ffffff' }), 'wide'),
+        el('p', { class: 'hint' }, '추가한 뒤 오른쪽 설정에서 작품 이미지(사진·스캔·PDF)를 올리세요. 벽에 붙이는 작품은 [벽 현수막 만들기]의 용지 크기를 쓰세요.')),
+      sub('add.art.book', '책 · 북스탠드',
+        row('놓는 방식', fseg(B, 'pose', [['closed', '덮은 책'], ['open', '펼친 책'], ['stand', '북스탠드']])),
+        examples('크기로 바로 추가', [
+          ['단행본 15×22', () => addBook('책', 15, 22)], ['A5 책', () => addBook('A5 책', 14.8, 21)],
+          ['A4 책·문집', () => addBook('A4 문집', 21, 29.7)], ['그림책 25×25', () => addBook('그림책', 25, 25)],
+          ['포트폴리오 A3', () => addBook('포트폴리오', 29.7, 42)],
+        ]),
+        el('div', { class: 'row3' }, fnum(B, 'pw', '가로'), fnum(B, 'ph', '세로'), fnum(B, 'thick', '두께', 'cm', 0.3)),
+        button('＋ 직접 입력한 크기로 추가', () => addBook('책', B.pw, B.ph), 'wide'),
+        el('p', { class: 'hint' }, '표지(펼친 책은 펼친 면) 이미지를 올릴 수 있습니다.')),
+      sub('add.art.acrylic', '아크릴 스탠드 (POP 꽂이)',
+        examples('규격으로 바로 추가', [['A5', 14.8, 21], ['A4', 21, 29.7], ['A3', 29.7, 42], ['A4 가로', 29.7, 21]].map(([n, w, h]) =>
+          [n, () => BS.app.addItem('acrylic', { pw: w, ph: h, name: `아크릴 스탠드 ${n}` })]))),
+      sub('add.art.obj', '입체 작품 · 소품', libGrid(BS.items.CATALOG.objects)),
+    ));
+
+    // 6) 디지털
+    pane.appendChild(fold('add.digital', '디지털', libGrid(BS.items.CATALOG.digital)));
+    // 7) 사람
+    pane.appendChild(fold('add.people', '사람 (크기 비교용)', libGrid(BS.items.CATALOG.people)));
+    // 8) 진열 (맨 아래)
+    pane.appendChild(fold('add.display', '진열 (선반·전시단·좌대)', libGrid(BS.items.CATALOG.display)));
   }
-  function addWallPreset(name, w, h, y) {
+  function addWallPreset(name, w, h, y, artwork) {
     const inf = BS.booth.wallInfo('back');
     const p = BS.defaults.panel({
       name, w, h, wall: 'back', y: Math.max(0, Math.min(y, inf.h - h)), u: Math.max(0, (inf.len - w) / 2),
-      cells: [BS.defaults.cell({ mode: 'text', title: name, body: `${w}×${h} cm`, titleSize: Math.min(12, h / 6), bodySize: Math.min(5, h / 14) })],
+      border: artwork ? 0.3 : 1, thick: artwork ? 0.3 : 1,
+      cells: [artwork
+        ? BS.defaults.cell({ mode: 'empty' })
+        : BS.defaults.cell({ mode: 'text', title: name, body: `${w}×${h} cm`, titleSize: Math.min(12, h / 6), bodySize: Math.min(5, h / 14) })],
     });
     BS.app.addPanel(p);
   }
 
   /* ---------------------------------------------------------------
-   * [선택] 탭 — 선택한 물체/현수막 속성
+   * 오른쪽 선택 항목 패널 — 선택한 물체/현수막 속성
    * ------------------------------------------------------------- */
   function renderSel() {
-    const pane = document.getElementById('tab-sel');
+    const pane = document.getElementById('insp-body');
     pane.innerHTML = '';
     UI.live = [];
     const e = BS.app.selected();
-    document.getElementById('sel-dot').classList.toggle('on', !!e);
-    if (!e) {
-      pane.appendChild(el('div', { class: 'empty' },
-        el('p', null, '3D 화면에서 물체나 현수막을 클릭하거나, [목록] 탭에서 이름을 눌러 선택하세요.'),
-        el('ul', { class: 'keys' },
-          el('li', null, el('kbd', null, '드래그'), ' 이동 (벽 현수막은 벽 위에서)'),
-          el('li', null, el('kbd', null, 'R'), ' / ', el('kbd', null, 'Shift+R'), ' 15° 회전'),
-          el('li', null, el('kbd', null, 'Ctrl+D'), ' 복제   ', el('kbd', null, 'Delete'), ' 삭제'),
-          el('li', null, el('kbd', null, 'Ctrl+Z'), ' 실행취소   ', el('kbd', null, 'Ctrl+Shift+Z'), ' 다시실행'),
-          el('li', null, el('kbd', null, '방향키'), ' 스냅 간격만큼 이동 (Shift: 10cm)'),
-          el('li', null, el('kbd', null, 'F'), ' / 더블클릭  포커스'),
-          el('li', null, el('kbd', null, '1~6'), ' 시점 전환   ', el('kbd', null, 'G'), ' 격자   ', el('kbd', null, 'M'), ' 치수'),
-        )));
-      return;
-    }
+    document.getElementById('insp-title').textContent = e ? e.name : '선택 항목';
+    if (!e) return;
     const isPanel = e.kind === 'panel';
     const what = isPanel ? 'panels' : 'items';
     const rerender = () => renderSel();
@@ -420,7 +546,9 @@
         button(e.hidden ? '🙈 숨김' : '👁 보임', () => { e.hidden = !e.hidden; BS.app.changed(what); BS.app.commit(); rerender(); syncLayer(); }, 'sm' + (e.hidden ? ' on' : '')),
         button('🗑 삭제', () => BS.app.remove(), 'sm danger', 'Delete')));
     pane.appendChild(head);
-    pane.appendChild(text({ label: '이름', get: () => e.name, set: (v) => { e.name = v; }, what: 'none', after: () => { UI.layerNamesOnly(); renderSelbar(); } }));
+    pane.appendChild(text({ label: '이름', get: () => e.name, set: (v) => { e.name = v; }, what: 'none', after: () => {
+      UI.layerNamesOnly(); renderSelbar(); document.getElementById('insp-title').textContent = e.name;
+    } }));
 
     if (isPanel) renderPanelProps(pane, e, rerender);
     else renderItemProps(pane, e, rerender);
@@ -457,19 +585,59 @@
 
   function renderItemProps(pane, e, rerender) {
     const def = BS.items.LIB[e.type];
-    const sizeRows = def.round
-      ? [num({ label: '지름', get: () => e.w, set: (v) => { e.w = v; e.d = v; }, min: 5, max: 1000, what: 'items' }),
-        num({ label: '높이', get: () => e.h, set: (v) => { e.h = v; }, min: 1, max: 600, what: 'items' })]
-      : [el('div', { class: 'row3' },
-        num({ label: '가로', get: () => e.w, set: (v) => { e.w = v; }, min: 1, max: 2000, what: 'items' }),
-        num({ label: '깊이', get: () => e.d, set: (v) => { e.d = v; }, min: 1, max: 2000, what: 'items' }),
-        num({ label: '높이', get: () => e.h, set: (v) => { e.h = v; }, min: 1, max: 600, what: 'items' }))];
-    pane.appendChild(section('크기 · 색상', ...sizeRows,
-      color({ label: '색상', get: () => e.color, set: (v) => { e.color = v; }, what: 'items' }),
-      def.cloth ? check({ label: '테이블 천 덮개', get: () => e.cloth, set: (v) => { e.cloth = v; }, what: 'items' }) : null,
+    const sz = (label, key, o = {}) => num(Object.assign({ label, get: () => e[key], set: (v) => { e[key] = v; }, min: 0.3, max: 2000, step: 0.5, what: 'items' }, o));
+    let sizeRows;
+    if (def.derive) {
+      // 작품: 실제 크기(가로·세로)와 놓는 방식 → 가로·깊이·높이는 자동 계산
+      const poses = e.type === 'paper' ? [['stand', '세워 놓기'], ['flat', '눕히기'], ['frame', '액자']]
+        : e.type === 'book' ? [['closed', '덮은 책'], ['open', '펼친 책'], ['stand', '북스탠드']] : null;
+      sizeRows = [
+        el('div', { class: e.type === 'book' ? 'row3' : 'row2' }, sz('가로', 'pw', { label: e.type === 'book' ? '가로(한 면)' : '가로' }), sz('세로', 'ph'),
+          e.type === 'book' ? sz('두께', 'thick') : null),
+        poses ? seg({ label: '놓는 방식', get: () => e.pose, options: poses, set: (v) => { e.pose = v; }, what: 'items', after: rerender }) : null,
+        e.type !== 'book' ? el('div', { class: 'preset-row' }, el('span', { class: 'muted' }, '규격'),
+          ...BS.items.PAPER_SIZES.map(([n, w, h]) => button(n, () => {
+            const land = e.pw > e.ph;
+            e.pw = land ? h : w; e.ph = land ? w : h;
+            BS.app.changed('items'); BS.app.commit(); UI.refreshLive();
+          }, 'chip')),
+          button('↻ 가로/세로', () => { [e.pw, e.ph] = [e.ph, e.pw]; BS.app.changed('items'); BS.app.commit(); UI.refreshLive(); }, 'chip')) : null,
+        el('p', { class: 'hint' }, `차지하는 공간: ${U.fmt(e.w)}×${U.fmt(e.d)}×${U.fmt(e.h)} cm (자동 계산)`),
+      ];
+    } else if (def.round) {
+      sizeRows = [el('div', { class: 'row2' }, sz('지름', 'w', { set: (v) => { e.w = v; e.d = v; } }), sz('높이', 'h'))];
+    } else if (e.type === 'tv') {
+      sizeRows = [
+        el('div', { class: 'row2' }, sz('화면 가로', 'w'), sz('전체 높이', 'h')),
+        el('div', { class: 'preset-row' }, el('span', { class: 'muted' }, '화면 크기'),
+          ...[[43, 95], [50, 111], [55, 122], [65, 144], [75, 166], [86, 190]].map(([inch, w]) => button(`${inch}인치`, () => {
+            e.w = w; BS.app.changed('items'); BS.app.commit(); UI.refreshLive();
+          }, 'chip'))),
+        sz('받침 깊이', 'd'),
+      ];
+    } else {
+      sizeRows = [el('div', { class: 'row3' }, sz('가로', 'w'), sz('깊이', 'd'), sz('높이', 'h'))];
+    }
+    const colorLabel = e.type === 'paper' ? '액자 색' : e.type === 'book' ? '표지 색' : def.cloth && e.cloth ? '천 색' : '색상';
+    pane.appendChild(section('크기 · 모양',
+      e.type === 'solid' ? select({ label: '모양', get: () => e.form, options: [['cube', '정육면체/직육면체'], ['sphere', '구'], ['cylinder', '원기둥'], ['cone', '원뿔'], ['pyramid', '사각뿔'], ['torus', '고리']], set: (v) => { e.form = v; }, what: 'items' }) : null,
+      ...sizeRows,
+      e.type === 'paper' && e.pose !== 'frame' ? null : color({ label: colorLabel, get: () => e.color, set: (v) => { e.color = v; }, what: 'items' }),
+      def.cloth ? check({ label: '천 덮개', get: () => e.cloth, set: (v) => { e.cloth = v; if (v && e.color === '#f2f2ee') e.color = '#1f3a68'; if (!v && e.color === '#1f3a68') e.color = '#f2f2ee'; }, what: 'items', after: rerender }) : null,
       e.type === 'table-rect' ? el('div', { class: 'preset-row' }, el('span', { class: 'muted' }, '대여 규격'),
         ...[[180, 60], [180, 45], [150, 60], [120, 60], [120, 45]].map(([w, d]) => button(`${w}×${d}`, () => { e.w = w; e.d = d; e.h = 72; BS.app.changed('items'); BS.app.commit(); UI.refreshLive(); }, 'chip'))) : null,
     ));
+    if (def.image) {
+      const isScreen = def.image === 'screen';
+      const thumb = e.img && BS.assets[e.img] ? el('img', { class: 'thumb', src: BS.assets[e.img], alt: '올린 이미지' }) : el('div', { class: 'thumb empty' }, '이미지 없음');
+      pane.appendChild(section(isScreen ? '화면 이미지' : (e.type === 'book' ? (e.pose === 'open' ? '펼친 면 이미지' : '표지 이미지') : '작품 이미지'),
+        thumb,
+        el('div', { class: 'btn-row' },
+          button(e.img ? '이미지 바꾸기' : '이미지/PDF 올리기', () => pickImage(e, null), 'primary'),
+          e.img ? button('지우기', () => { e.img = null; BS.app.changed('items'); BS.app.commit(); rerender(); }, 'sm') : null),
+        e.img ? seg({ label: '비율', get: () => e.fit || (isScreen ? 'cover' : 'contain'), options: [['contain', '맞춤'], ['cover', '채우기'], ['stretch', '늘이기']], set: (v) => { e.fit = v; }, what: 'items', after: rerender }) : null,
+        el('p', { class: 'hint' }, isScreen ? '발표 화면이나 영상 캡처를 올리면 화면에 보입니다.' : '작품 사진·스캔 이미지(PNG/JPG) 또는 PDF 첫 페이지.')));
+    }
     pane.appendChild(section('위치 · 회전', ...floorPos(e),
       def.stack ? el('p', { class: 'hint' }, '테이블·선반·전시단 위로 옮기면 그 높이에 자동으로 올라갑니다.' + (BS.items.elev && BS.items.elev[e.id] ? ` (현재 ${BS.items.elev[e.id]}cm 위)` : '')) : null));
   }
@@ -595,7 +763,7 @@
 
   let pickTarget = null;
   function pickImage(p, idx) {
-    pickTarget = { id: p.id, idx };
+    pickTarget = { id: p.id, idx }; // idx === null → 물품(작품/화면) 이미지
     document.getElementById('file-image').click();
   }
   async function onImageFile(e) {
@@ -606,6 +774,13 @@
     if (!p) return;
     try {
       const r = await BS.storage.readImageFile(f);
+      if (pickTarget.idx === null) {
+        p.img = BS.addAsset(r.dataURL);
+        BS.app.changed('items'); BS.app.commit();
+        BS.toast('이미지를 넣었습니다');
+        if (BS.app.selId === p.id) renderSel();
+        return;
+      }
       const c = p.cells[pickTarget.idx];
       c.mode = 'image';
       c.img = BS.addAsset(r.dataURL);
@@ -645,8 +820,8 @@
       return r;
     };
     const ps = BS.state.panels, its = BS.state.items;
-    pane.appendChild(section(`현수막 · 패널 (${ps.length})`, ps.length ? el('div', { class: 'layers' }, ...ps.map(mk)) : el('p', { class: 'hint' }, '[추가] 탭에서 현수막을 만드세요.')));
-    pane.appendChild(section(`집기 (${its.length})`, its.length ? el('div', { class: 'layers' }, ...its.map(mk)) : el('p', { class: 'hint' }, '[추가] 탭에서 테이블·의자를 넣으세요.')));
+    pane.appendChild(section(`현수막 · 패널 (${ps.length})`, ps.length ? el('div', { class: 'layers' }, ...ps.map(mk)) : el('p', { class: 'hint' }, '[물품 추가] 탭에서 현수막을 만드세요.')));
+    pane.appendChild(section(`물품 (${its.length})`, its.length ? el('div', { class: 'layers' }, ...its.map(mk)) : el('p', { class: 'hint' }, '[물품 추가] 탭에서 테이블·의자·작품을 넣으세요.')));
     const cnt = {};
     for (const it of its) { const d = BS.items.LIB[it.type]; if (!d.ghost) cnt[d.label] = (cnt[d.label] || 0) + 1; }
     pane.appendChild(section('개수 요약', el('div', { class: 'summary' },
@@ -669,42 +844,37 @@
   };
 
   /* ---------------------------------------------------------------
-   * [파일] 탭
+   * [저장·인쇄] 탭 — 큰 제목마다 접기
    * ------------------------------------------------------------- */
   function renderFile() {
     const pane = document.getElementById('tab-file');
     pane.innerHTML = '';
-    pane.appendChild(section('클라우드 저장 · 공유 링크', el('div', { id: 'cloud-box' })));
+    pane.appendChild(fold('file.cloud', '클라우드 저장 · 공유', el('div', { id: 'cloud-box' })));
     BS.cloud.render();
-    pane.appendChild(section('파일로 저장 · 불러오기',
-      el('p', { class: 'hint' }, '작업 내용은 이 브라우저에 자동 저장됩니다. 다른 컴퓨터로 옮기거나 보관하려면 JSON 파일로 내보내세요 (올린 이미지 포함).'),
-      el('div', { class: 'btn-col' },
-        button('💾 JSON 파일로 내보내기', () => BS.storage.exportJSON(), 'primary'),
-        button('📂 JSON 파일 불러오기', () => document.getElementById('file-json').click(), ''))));
-    pane.appendChild(section('이미지 · 인쇄물',
+    pane.appendChild(fold('file.print', '이미지 · 인쇄물',
       el('div', { class: 'btn-col' },
         button('📷 현재 3D 화면 스크린샷 (PNG)', () => BS.storage.screenshot()),
         button('📐 평면도 + 벽면 입면도 (PNG)', () => BS.storage.exportPlan('png')),
         button('🖨 평면도 + 벽면 입면도 (PDF, A3)', () => BS.storage.exportPlan('pdf')),
         button('📋 물품 목록 (CSV, 엑셀)', () => BS.storage.exportCSV())),
       el('p', { class: 'hint' }, '평면도에는 각 물품의 번호·규격·설치 위치(왼쪽 벽/뒷벽에서 거리)가, 입면도에는 현수막의 가로 위치와 하단 높이가 표시됩니다.')));
-    pane.appendChild(section('새로 시작',
+    pane.appendChild(fold('file.json', '파일로 저장 · 불러오기 (JSON)',
+      el('p', { class: 'hint' }, '인터넷 없이 보관하거나 다른 곳으로 옮길 때 씁니다 (올린 이미지 포함).'),
       el('div', { class: 'btn-col' },
-        button('🆕 새 부스 설정 (형태 고르기)', () => UI.openSetup(false)),
-        button('🎪 기본 데모 장면 불러오기', () => {
-          if (!confirm('현재 장면을 기본 데모 장면으로 바꿀까요? (Ctrl+Z 로 되돌릴 수 있습니다)')) return;
-          BS.app.newBooth('U', 300, 300, 240, true);
-        }),
-        button('🧹 브라우저 저장 데이터 지우기', () => {
-          if (!confirm('브라우저에 자동 저장된 내용을 지울까요? (현재 화면은 유지됩니다)')) return;
-          BS.storage.clearLocal(); BS.toast('저장 데이터를 지웠습니다. 새로고침하면 처음 설정 창이 열립니다.');
-        }, 'danger'))));
-    pane.appendChild(section('조작 방법',
+        button('💾 JSON 파일로 내보내기', () => BS.storage.exportJSON()),
+        button('📂 JSON 파일 불러오기', () => document.getElementById('file-json').click()))));
+    pane.appendChild(fold('file.keys', '조작 방법',
       el('ul', { class: 'keys' },
         el('li', null, '마우스 왼쪽 드래그: 회전 · 휠: 확대/축소 · 오른쪽 드래그: 화면 이동'),
         el('li', null, '터치: 한 손가락 회전 · 두 손가락 확대/이동'),
-        el('li', null, '물체를 클릭하면 선택, 드래그하면 바닥(현수막은 벽) 위에서 이동'),
-        el('li', null, '눈높이 시점: W/A/S/D·화살표로 걷기, Q/E 회전, 드래그로 둘러보기, Esc 종료'),
+        el('li', null, el('kbd', null, '방향키'), ' 아무것도 선택하지 않았을 때 화면을 앞뒤·좌우로 이동 (Shift: 빠르게)'),
+        el('li', null, el('kbd', null, '방향키'), ' 물체를 선택했을 때 스냅 간격만큼 이동 (Shift: 10cm)'),
+        el('li', null, el('kbd', null, '드래그'), ' 물체 이동 (벽 현수막은 벽 위에서)'),
+        el('li', null, el('kbd', null, 'R'), ' / ', el('kbd', null, 'Shift+R'), ' 15° 회전   ', el('kbd', null, 'F'), ' 포커스'),
+        el('li', null, el('kbd', null, 'Ctrl+D'), ' 복제   ', el('kbd', null, 'Delete'), ' 삭제   ', el('kbd', null, 'Esc'), ' 선택 해제'),
+        el('li', null, el('kbd', null, 'Ctrl+Z'), ' 실행취소   ', el('kbd', null, 'Ctrl+Shift+Z'), ' 다시실행   ', el('kbd', null, 'Ctrl+S'), ' 바로 저장'),
+        el('li', null, el('kbd', null, '1~6'), ' 시점 전환   ', el('kbd', null, 'G'), ' 격자   ', el('kbd', null, 'M'), ' 치수'),
+        el('li', null, '눈높이 시점: W/A/S/D·화살표로 걷기, Q/E 회전, 드래그로 둘러보기'),
         el('li', null, '빨간색 = 다른 물체와 겹치거나 부스/벽 밖으로 나간 상태'))));
   }
 
@@ -726,36 +896,41 @@
       button('◎', () => BS.app.focus(), 'sb', '포커스 (F)'),
       button('⧉', () => BS.app.duplicate(), 'sb', '복제 (Ctrl+D)'),
       button('🗑', () => BS.app.remove(), 'sb danger', '삭제 (Delete)'),
-      button('속성', () => UI.showTab('sel'), 'sb wide', '속성 편집'),
+      button('속성', () => document.body.classList.add('insp-open'), 'sb wide', '속성 편집'),
       button('✕', () => BS.app.select(null), 'sb', '선택 해제 (Esc)'),
     ].filter(Boolean));
     document.body.classList.toggle('has-sel', true);
   }
 
   /* ---------------------------------------------------------------
-   * 처음 설정 창 (부스 형태 · 크기)
+   * 새로 시작 창: 배치 이름 · 벽 형태 · 크기 · (클라우드) 비밀번호
    * ------------------------------------------------------------- */
-  UI.openSetup = function (first) {
+  UI.openNew = function () {
     const modal = document.getElementById('modal');
     const card = modal.querySelector('.modal-card');
     if (UI._onClose) UI.closeModal();
     card.innerHTML = '';
-    UI.modalLocked = false;
-    const cfg = { shape: BS.state.booth.shape || 'U', w: BS.state.booth.width || 300, d: BS.state.booth.depth || 300, h: BS.state.booth.height || 240, demo: true };
-    if (first) Object.assign(cfg, { shape: 'U', w: 300, d: 300, h: 240 });
+    const cloud = BS.cloud.available();
+    const cfg = { shape: 'U', w: 300, d: 300, h: 240, demo: false };
     const nInp = (k, label) => {
       const i = el('input', { type: 'number', min: 50, max: 3000, value: cfg[k], inputmode: 'decimal' });
       i.oninput = () => { cfg[k] = U.num(i.value, cfg[k]); };
       return el('label', { class: 'mnum' }, el('span', null, label), el('div', { class: 'num-wrap' }, i, el('span', { class: 'unit' }, 'cm')));
     };
-    const demo = el('input', { type: 'checkbox', checked: true });
+    const title = el('input', { type: 'text', maxlength: 100, placeholder: '예) 3학년 과학 수업나눔 부스' });
+    const pw = el('input', { type: 'password', autocomplete: 'new-password', placeholder: '4자 이상' });
+    const pw2 = el('input', { type: 'password', autocomplete: 'new-password' });
+    const demo = el('input', { type: 'checkbox' });
     demo.onchange = () => { cfg.demo = demo.checked; };
+    const err = el('p', { class: 'form-error' });
+    const mf = (label, input, hint) => el('label', { class: 'mfield' }, el('span', null, label), input, hint ? el('small', null, hint) : null);
     card.append(
-      el('h2', { id: 'modal-title' }, first ? '부스 설정 시작하기' : '새 부스 설정'),
-      el('p', { class: 'muted' }, '부스 벽의 형태와 크기를 먼저 고르세요. 나중에 [부스] 탭에서 언제든 바꿀 수 있습니다.'),
-      el('h3', null, '1. 벽 형태'),
+      el('h2', { id: 'modal-title' }, '새로 시작'),
+      el('h3', null, '1. 배치 이름'),
+      mf('', title, cloud ? '[불러오기] 목록에 이 이름으로 보입니다.' : null),
+      el('h3', null, '2. 벽 형태'),
       shapePicker(() => cfg.shape, (k) => { cfg.shape = k; }),
-      el('h3', null, '2. 크기 (cm)'),
+      el('h3', null, '3. 크기 (cm)'),
       el('div', { class: 'mnums' }, nInp('w', '폭'), nInp('d', '깊이'), nInp('h', '벽 높이')),
       el('div', { class: 'preset-row' }, el('span', { class: 'muted' }, '자주 쓰는 크기'),
         ...[[300, 300], [300, 200], [600, 300], [200, 200]].map(([w, d]) => button(`${w}×${d}`, () => {
@@ -763,18 +938,29 @@
           card.querySelectorAll('.mnum input')[0].value = w; card.querySelectorAll('.mnum input')[1].value = d;
         }, 'chip'))),
       el('label', { class: 'check big' }, demo, ' 예시 배치 넣기 (뒷벽 연구학교 현수막 + 테이블 2개 + 의자 4개)'),
+      cloud ? el('h3', null, '4. 비밀번호') : null,
+      cloud ? el('div', { class: 'cloud-form' },
+        mf('비밀번호', pw, '이 배치를 열고 고칠 때 필요합니다. 함께 작업할 선생님과 공유하세요. 이 브라우저에는 기억되어 다시 묻지 않습니다.'),
+        mf('비밀번호 확인', pw2)) : el('p', { class: 'hint' }, '지금은 파일로 열어서 클라우드 저장을 쓸 수 없습니다. 이 브라우저에만 자동 저장됩니다.'),
+      err,
       el('div', { class: 'modal-actions' },
-        first ? null : button('취소', () => UI.closeModal(), ''),
-        button(first ? '시작하기' : '이 설정으로 새로 만들기', () => {
+        button('취소', () => UI.closeModal(), ''),
+        button('만들기', () => {
+          const name = title.value.trim();
+          if (!name) { err.textContent = '배치 이름을 입력하세요'; title.focus(); return; }
+          if (cloud && pw.value.length < 4) { err.textContent = '비밀번호는 4자 이상이어야 합니다'; pw.focus(); return; }
+          if (cloud && pw.value !== pw2.value) { err.textContent = '비밀번호 확인이 일치하지 않습니다'; pw2.focus(); return; }
           const w = U.clamp(cfg.w, 50, 3000), d = U.clamp(cfg.d, 50, 3000), h = U.clamp(cfg.h, 30, 600);
-          UI.closeModal(true);
-          BS.app.newBooth(cfg.shape, w, d, h, cfg.demo);
-          BS.toast(`${BS.SHAPES[cfg.shape].label} 부스 ${w}×${d}×${h}cm 를 만들었습니다`);
+          UI.closeModal();
+          BS.app.newBooth(cfg.shape, w, d, h, cfg.demo, name);
+          if (cloud) BS.cloud.create(name, pw.value);
+          else BS.toast(`"${name}" 을(를) 만들었습니다`);
         }, 'primary')),
     );
     modal.hidden = false;
-    setTimeout(() => { const b = card.querySelector('.modal-actions .primary'); if (b) b.focus(); }, 50);
+    setTimeout(() => title.focus(), 50);
   };
+  UI.openSetup = UI.openNew; // 예전 이름 호환
 
   UI.closeModal = function () {
     const modal = document.getElementById('modal');

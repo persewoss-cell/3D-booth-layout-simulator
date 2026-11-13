@@ -16,57 +16,84 @@
    *   support : 위에 물건을 올릴 수 있음
    *   stack   : 받침(support) 위에 올라감
    *   ghost   : 충돌/부스 밖 검사 제외(스케일용 사람)
+   *   cover   : 투명 케이스 — 안에 넣은 작품과 겹쳐도 경고하지 않음
+   *   image   : 작품/화면 이미지를 올릴 수 있음 (it.img = asset id)
+   *   derive  : 작품 크기(pw·ph·두께·놓는 방식)에서 가로·깊이·높이를 자동 계산
    * ------------------------------------------------------------- */
   I.LIB = {
-    'table-rect': { label: '직사각 테이블', group: '테이블', defaults: { w: 180, d: 60, h: 72, color: '#f2f2ee' }, support: true, table: true, cloth: true },
+    'table-rect': { label: '사각 테이블', group: '테이블', defaults: { w: 180, d: 60, h: 72, color: '#f2f2ee' }, support: true, table: true, cloth: true },
     'table-square': { label: '정사각 테이블', group: '테이블', defaults: { w: 75, d: 75, h: 72, color: '#f2f2ee' }, support: true, table: true, cloth: true },
-    'table-round': { label: '원형 테이블', group: '테이블', defaults: { w: 90, d: 90, h: 72, color: '#f2f2ee' }, support: true, table: true, round: true },
+    'table-round': { label: '원형 테이블', group: '테이블', defaults: { w: 90, d: 90, h: 72, color: '#f2f2ee' }, support: true, table: true, round: true, cloth: true },
     'chair': { label: '의자', group: '의자', defaults: { w: 45, d: 50, h: 85, color: '#3d5a80' }, chair: true },
     'stool': { label: '스툴', group: '의자', defaults: { w: 38, d: 38, h: 65, color: '#3d5a80' }, chair: true, round: true },
     'shelf': { label: '진열 선반', group: '진열', defaults: { w: 120, d: 40, h: 180, color: '#e9e4da' }, support: true },
     'platform': { label: '낮은 전시 단', group: '진열', defaults: { w: 120, d: 60, h: 40, color: '#ffffff' }, support: true },
     'pedestal': { label: '좌대(스탠드)', group: '진열', defaults: { w: 40, d: 40, h: 90, color: '#ffffff' }, support: true },
     'box': { label: '상자(자유 크기)', group: '진열', defaults: { w: 40, d: 30, h: 30, color: '#c8a47e' }, stack: true },
-    'laptop': { label: '노트북', group: '디지털', defaults: { w: 34, d: 24, h: 22, color: '#5b6068' }, stack: true },
-    'monitor': { label: '모니터', group: '디지털', defaults: { w: 60, d: 20, h: 45, color: '#2b2e33' }, stack: true },
+    'laptop': { label: '노트북', group: '디지털', defaults: { w: 34, d: 24, h: 22, color: '#5b6068' }, stack: true, image: 'screen' },
+    'monitor': { label: '모니터', group: '디지털', defaults: { w: 60, d: 20, h: 45, color: '#2b2e33' }, stack: true, image: 'screen' },
     'terminal': { label: '단말 자리(노트북+모니터)', group: '디지털', defaults: { w: 120, d: 60, h: 72, color: '#f2f2ee' }, support: false, table: true },
     'kiosk': { label: '스탠드형 키오스크', group: '디지털', defaults: { w: 55, d: 50, h: 150, color: '#e6e8eb' } },
+    'tablet': { label: '태블릿 PC', group: '디지털', defaults: { w: 25, d: 16, h: 19, color: '#2b2e33' }, stack: true, image: 'screen' },
+    'tv': { label: '스탠드형 TV', group: '디지털', defaults: { w: 124, d: 65, h: 165, color: '#2b2e33' }, image: 'screen' },
+    // --- 전시 작품 (테이블·전시단 위에 올리면 자동으로 그 높이에 놓임) ---
+    'paper': { label: '지류 작품', group: '전시 작품', defaults: { pw: 21, ph: 29.7, pose: 'stand', w: 21, d: 12, h: 30, color: '#5b4636' }, stack: true, image: 'art', derive: true },
+    'book': { label: '책', group: '전시 작품', defaults: { pw: 15, ph: 22, thick: 2, pose: 'closed', w: 15, d: 22, h: 2, color: '#2f5d8a' }, stack: true, image: 'art', derive: true },
+    'acrylic': { label: '아크릴 스탠드(POP)', group: '전시 작품', defaults: { pw: 21, ph: 29.7, w: 23, d: 9, h: 32, color: '#dfe7ef' }, stack: true, image: 'art', derive: true },
+    'solid': { label: '입체 작품', group: '전시 작품', defaults: { form: 'cube', w: 20, d: 20, h: 20, color: '#e07a5f' }, stack: true },
+    'vase': { label: '도자기·꽃병', group: '전시 작품', defaults: { w: 18, d: 18, h: 30, color: '#c9ada7' }, stack: true, round: true },
+    'plant': { label: '화분', group: '전시 작품', defaults: { w: 30, d: 30, h: 60, color: '#b5651d' }, stack: true, round: true },
+    'case': { label: '투명 아크릴 케이스', group: '전시 작품', defaults: { w: 40, d: 30, h: 35, color: '#3a3f47' }, stack: true, cover: true },
+    'leaflet': { label: '리플릿 꽂이', group: '전시 작품', defaults: { w: 23, d: 16, h: 28, color: '#dfe7ef' }, stack: true },
+    'nameplate': { label: '삼각 명패', group: '전시 작품', defaults: { w: 25, d: 7, h: 7, color: '#ffffff' }, stack: true },
     'person160': { label: '사람 160cm', group: '사람(스케일)', defaults: { w: 44, d: 24, h: 160, color: '#8d99ae' }, ghost: true },
     'person175': { label: '사람 175cm', group: '사람(스케일)', defaults: { w: 48, d: 26, h: 175, color: '#6c7a91' }, ghost: true },
   };
 
-  /** 라이브러리 패널에 보여줄 프리셋 (대여용 표준 규격 포함) */
-  I.PRESETS = [
-    { group: '테이블', items: [
-      { type: 'table-rect', label: '직사각 테이블 180×60', over: { w: 180, d: 60, h: 72 } },
-      { type: 'table-rect', label: '직사각 테이블 180×45', over: { w: 180, d: 45, h: 72 } },
-      { type: 'table-rect', label: '직사각 테이블 120×60', over: { w: 120, d: 60, h: 72 } },
-      { type: 'table-rect', label: '테이블 180×60 (천 덮개)', over: { w: 180, d: 60, h: 72, cloth: true, color: '#1f3a68' } },
-      { type: 'table-square', label: '정사각 테이블 75×75', over: {} },
-      { type: 'table-round', label: '원형 테이블 Ø90', over: {} },
-      { type: 'table-round', label: '원형 테이블 Ø60 (카페형)', over: { w: 60, d: 60, h: 72 } },
-    ] },
-    { group: '의자', items: [
-      { type: 'chair', label: '의자 45×50', over: {} },
-      { type: 'stool', label: '스툴', over: {} },
-    ] },
-    { group: '진열', items: [
+  /** 라이브러리 버튼 목록 — ui.js 의 [물품 추가] 탭에서 사용 (over: 기본값 덮어쓰기) */
+  I.CATALOG = {
+    digital: [
+      { type: 'tablet', label: '태블릿 PC (거치대)', over: {} },
+      { type: 'tv', label: '스탠드형 TV 55인치', over: { w: 122, h: 160, name: 'TV 55인치' } },
+      { type: 'tv', label: '스탠드형 TV 65인치', over: { w: 144, h: 170, name: 'TV 65인치' } },
+      { type: 'tv', label: '스탠드형 TV 75인치', over: { w: 166, h: 180, name: 'TV 75인치' } },
+      { type: 'laptop', label: '노트북', over: {} },
+      { type: 'monitor', label: '모니터', over: {} },
+      { type: 'terminal', label: '단말 자리 (책상+노트북+모니터)', over: {} },
+      { type: 'kiosk', label: '스탠드형 키오스크', over: {} },
+    ],
+    people: [
+      { type: 'person160', label: '사람 실루엣 160cm', over: {} },
+      { type: 'person175', label: '사람 실루엣 175cm', over: {} },
+    ],
+    display: [
       { type: 'shelf', label: '진열 선반 120×40×180', over: {} },
       { type: 'shelf', label: '낮은 진열장 90×40×90', over: { w: 90, d: 40, h: 90 } },
       { type: 'platform', label: '낮은 전시 단 120×60×40', over: {} },
       { type: 'pedestal', label: '좌대 40×40×90', over: {} },
       { type: 'box', label: '상자/소품', over: {} },
-    ] },
-    { group: '디지털', items: [
-      { type: 'terminal', label: '단말 자리 (책상+노트북+모니터)', over: {} },
-      { type: 'laptop', label: '노트북 (테이블 위에 올리기)', over: {} },
-      { type: 'monitor', label: '모니터 (테이블 위에 올리기)', over: {} },
-      { type: 'kiosk', label: '스탠드형 키오스크', over: {} },
-    ] },
-    { group: '사람(스케일 확인)', items: [
-      { type: 'person160', label: '사람 실루엣 160cm', over: {} },
-      { type: 'person175', label: '사람 실루엣 175cm', over: {} },
-    ] },
+    ],
+    // 전시 작품 — 입체·기타
+    objects: [
+      { type: 'solid', label: '정육면체', over: { form: 'cube', w: 20, d: 20, h: 20 } },
+      { type: 'solid', label: '직육면체', over: { form: 'cube', w: 30, d: 15, h: 10, name: '직육면체' } },
+      { type: 'solid', label: '구', over: { form: 'sphere', w: 20, d: 20, h: 20, color: '#81b29a', name: '구' } },
+      { type: 'solid', label: '원기둥', over: { form: 'cylinder', w: 15, d: 15, h: 25, color: '#f2cc8f', name: '원기둥' } },
+      { type: 'solid', label: '원뿔', over: { form: 'cone', w: 18, d: 18, h: 25, color: '#3d405b', name: '원뿔' } },
+      { type: 'solid', label: '사각뿔(피라미드)', over: { form: 'pyramid', w: 20, d: 20, h: 18, color: '#e9c46a', name: '사각뿔' } },
+      { type: 'solid', label: '고리(도넛)', over: { form: 'torus', w: 20, d: 20, h: 6, color: '#9d4edd', name: '고리' } },
+      { type: 'vase', label: '도자기·꽃병', over: {} },
+      { type: 'case', label: '투명 아크릴 케이스', over: {} },
+      { type: 'leaflet', label: '리플릿 꽂이', over: {} },
+      { type: 'nameplate', label: '삼각 명패', over: {} },
+      { type: 'plant', label: '화분', over: {} },
+    ],
+  };
+
+  /** 지류 작품 규격 (가로×세로 cm, 세로 방향 기준) */
+  I.PAPER_SIZES = [
+    ['A5', 14.8, 21], ['A4', 21, 29.7], ['A3', 29.7, 42], ['A2', 42, 59.4], ['A1', 59.4, 84.1], ['A0', 84.1, 118.9],
+    ['8절', 27.2, 39.4], ['4절', 39.4, 54.5], ['사진 4×6', 10.2, 15.2],
   ];
 
   /* ---------------------------------------------------------------
@@ -100,6 +127,11 @@
   }
   function tableRound(g, it, M) {
     const r = it.w / 2, h = it.h;
+    if (it.cloth) { // 원형 천 덮개
+      cyl(g, r + 1, r + 1, 3, M.main, 0, h - 1.5, 0, 48);
+      cyl(g, r + 1, r + 3, h - 7, M.main, 0, (h - 7) / 2 + 4, 0, 48);
+      return;
+    }
     cyl(g, r, r, 3, M.main, 0, h - 1.5, 0, 48);
     cyl(g, 3, 3, h - 3, M.metal, 0, (h - 3) / 2, 0, 16);
     cyl(g, r * 0.45, r * 0.5, 2, M.metal, 0, 1, 0, 32);
@@ -196,12 +228,244 @@
     box(g, 2 * s, 2.5 * s, 2 * s, M.main, 0, H - headR, headR * 0.95);
   }
 
+  /* --- 전시 작품 --------------------------------------------------- */
+  const PAPER_TILT = U.rad(15), FRAME_TILT = U.rad(10), FRAME = 2.5;
+
+  /** 작품 크기·놓는 방식 → 가로(w)·깊이(d)·높이(h) 자동 계산 */
+  I.derive = function (it) {
+    const pw = Math.max(1, it.pw || 1), ph = Math.max(1, it.ph || 1);
+    if (it.type === 'paper') {
+      if (it.pose === 'flat') { it.w = pw; it.d = ph; it.h = 0.3; }
+      else if (it.pose === 'frame') {
+        const H = ph + FRAME * 2;
+        it.w = pw + FRAME * 2; it.d = r1(H * Math.sin(FRAME_TILT) + 7); it.h = r1(H * Math.cos(FRAME_TILT) + 0.5);
+      } else { it.w = pw; it.d = r1(ph * Math.sin(PAPER_TILT) + 6); it.h = r1(ph * Math.cos(PAPER_TILT) + 1.5); }
+    } else if (it.type === 'book') {
+      const t = Math.max(0.3, it.thick || 2);
+      if (it.pose === 'open') { it.w = pw * 2; it.d = ph; it.h = r1(t / 2 + 1); }
+      else if (it.pose === 'stand') { it.w = pw + 2; it.d = 16; it.h = r1(ph * Math.cos(PAPER_TILT) + 2); }
+      else { it.w = pw; it.d = ph; it.h = t; }
+    } else if (it.type === 'acrylic') { it.w = pw + 2; it.d = 9; it.h = r1(ph + 2); }
+  };
+  const r1 = (v) => Math.round(v * 10) / 10;
+
+  /** 앞면이 +z 인 얇은 판 (앞면에만 이미지) */
+  function sheet(g, w, h, t, front, side, x, y, z) {
+    return box(g, w, h, t, [side, side, side, side, front, side], x, y, z);
+  }
+  /** 바닥 뒤쪽으로 기울어진 그룹 (pivot: 아래 앞 모서리) */
+  function tilted(g, tilt, z) {
+    const t = new window.THREE.Group();
+    t.position.set(0, 0, z); t.rotation.x = -tilt; g.add(t); return t;
+  }
+
+  function paper(g, it, M) {
+    const pw = it.pw, ph = it.ph;
+    if (it.pose === 'flat') {
+      box(g, pw, 0.3, ph, [M.paper, M.paper, M.face, M.paper, M.paper, M.paper], 0, 0.15, 0);
+      return;
+    }
+    if (it.pose === 'frame') {
+      const H = ph + FRAME * 2, W = pw + FRAME * 2;
+      const t = tilted(g, FRAME_TILT, it.d / 2 - 3);
+      box(t, W, FRAME, 2.2, M.main, 0, FRAME / 2, 0);
+      box(t, W, FRAME, 2.2, M.main, 0, H - FRAME / 2, 0);
+      box(t, FRAME, H, 2.2, M.main, -W / 2 + FRAME / 2, H / 2, 0);
+      box(t, FRAME, H, 2.2, M.main, W / 2 - FRAME / 2, H / 2, 0);
+      sheet(t, pw, ph, 0.4, M.face, M.paper, 0, H / 2, -0.4);
+      box(g, 2, H * 0.75, 1.2, M.main, 0, H * 0.33, -it.d / 2 + 2).rotation.x = U.rad(-12); // 뒷받침
+      return;
+    }
+    // 탁상 거치대에 세움
+    const t = tilted(g, PAPER_TILT, it.d / 2 - 3);
+    sheet(t, pw, ph, 0.3, M.face, M.paper, 0, ph / 2 + 1.2, 0);
+    box(t, pw * 0.9, 1.2, 3, M.stand, 0, 0.6, 1);           // 받침 턱
+    box(g, Math.min(4, pw * 0.2), ph * 0.8, 1, M.stand, 0, ph * 0.38, -it.d / 2 + 2).rotation.x = U.rad(-14);
+  }
+
+  function book(g, it, M) {
+    const pw = it.pw, ph = it.ph, th = Math.max(0.3, it.thick || 2);
+    if (it.pose === 'open') {
+      // 펼친 책: 두 면이 살짝 V 자
+      for (const s of [-1, 1]) {
+        const half = new window.THREE.Group();
+        half.rotation.z = s * -0.05;
+        g.add(half);
+        box(half, pw, th / 2, ph, M.main, s * pw / 2, th / 4, 0);
+        box(half, pw - 0.6, 0.3, ph - 0.6, [M.paper, M.paper, s < 0 ? M.faceL : M.faceR, M.paper, M.paper, M.paper], s * pw / 2, th / 2 + 0.15, 0);
+      }
+      return;
+    }
+    if (it.pose === 'stand') {
+      // 북스탠드 + 세운 책
+      box(g, pw * 0.8, 0.8, 14, M.stand, 0, 0.4, 0);
+      const t = tilted(g, PAPER_TILT, 4);
+      box(t, pw, ph, th, [M.paper, M.main, M.paper, M.paper, M.face, M.main], 0, ph / 2 + 1.5, -th / 2);
+      box(t, pw * 0.9, 1.5, 3, M.stand, 0, 0.75, 1);
+      box(g, 2, ph * 0.75, 1, M.stand, 0, ph * 0.36, -5).rotation.x = U.rad(-14);
+      return;
+    }
+    // 덮은 책(눕힘): 윗면 = 표지
+    box(g, pw, th, ph, [M.paper, M.main, M.face, M.main, M.paper, M.paper], 0, th / 2, 0);
+  }
+
+  function acrylic(g, it, M) {
+    const pw = it.pw, ph = it.ph;
+    box(g, it.w, 0.6, it.d, M.glass, 0, 0.3, 0);                // 바닥판
+    const t = tilted(g, U.rad(8), 1);
+    sheet(t, pw, ph, 0.2, M.face, M.paper, 0, ph / 2 + 1, -0.3);
+    box(t, it.w, ph + 1.5, 0.3, M.glass, 0, (ph + 1.5) / 2 + 0.6, 0.4); // 앞 아크릴
+  }
+
+  function solid(g, it, M) {
+    const THREE = window.THREE;
+    let geo;
+    switch (it.form) {
+      case 'sphere': geo = new THREE.SphereGeometry(0.5, 32, 24); break;
+      case 'cylinder': geo = new THREE.CylinderGeometry(0.5, 0.5, 1, 32); break;
+      case 'cone': geo = new THREE.ConeGeometry(0.5, 1, 32); break;
+      case 'pyramid': geo = new THREE.ConeGeometry(0.5 * Math.SQRT2, 1, 4); geo.rotateY(Math.PI / 4); break;
+      case 'torus': geo = new THREE.TorusGeometry(0.36, 0.14, 16, 40); geo.rotateX(Math.PI / 2); geo.scale(1, 3.5, 1); break;
+      default: geo = new THREE.BoxGeometry(1, 1, 1);
+    }
+    const m = new THREE.Mesh(geo, M.main);
+    m.scale.set(it.w, it.h, it.d); m.position.y = it.h / 2;
+    m.castShadow = true; m.receiveShadow = true; g.add(m);
+  }
+
+  function vase(g, it, M) {
+    const THREE = window.THREE;
+    const r = it.w / 2, h = it.h;
+    const prof = [[0, 0], [0.62, 0], [0.8, 0.12], [1, 0.38], [0.86, 0.62], [0.45, 0.82], [0.42, 0.93], [0.55, 1]]
+      .map(([x, y]) => new THREE.Vector2(x * r, y * h));
+    const m = new THREE.Mesh(new THREE.LatheGeometry(prof, 40), M.main);
+    m.material.side = THREE.DoubleSide;
+    m.castShadow = true; m.receiveShadow = true; g.add(m);
+  }
+
+  function plant(g, it, M) {
+    const r = it.w / 2, h = it.h, potH = h * 0.32;
+    cyl(g, r * 0.62, r * 0.48, potH, M.main, 0, potH / 2, 0, 24);
+    cyl(g, r * 0.58, r * 0.58, 1, M.soil, 0, potH - 0.2, 0, 24);
+    const leaf = M.leaf;
+    const pts = [[0, 0.62, 0, 0.55], [-0.45, 0.5, 0.15, 0.42], [0.45, 0.52, -0.1, 0.42], [0.1, 0.78, -0.3, 0.4], [-0.15, 0.88, 0.25, 0.36], [0.2, 0.95, 0.15, 0.3]];
+    for (const [x, y, z, s] of pts) {
+      const m = new window.THREE.Mesh(new window.THREE.IcosahedronGeometry(r * s * 1.3, 1), leaf);
+      m.position.set(x * r, y * h, z * r); m.castShadow = true; g.add(m);
+    }
+  }
+
+  function glassCase(g, it, M) {
+    const THREE = window.THREE;
+    box(g, it.w, 3, it.d, M.main, 0, 1.5, 0);
+    const gl = new THREE.Mesh(new THREE.BoxGeometry(it.w, it.h - 3, it.d), M.glass);
+    gl.position.y = 3 + (it.h - 3) / 2; gl.renderOrder = 5; g.add(gl);
+    const ed = new THREE.LineSegments(new THREE.EdgesGeometry(gl.geometry), new THREE.LineBasicMaterial({ color: '#9fb3c8', transparent: true, opacity: 0.8 }));
+    ed.position.copy(gl.position); ed.userData.noPick = true; g.add(ed);
+  }
+
+  function leaflet(g, it, M) {
+    const { w, d, h } = it;
+    box(g, w, 0.6, d, M.glass, 0, 0.3, 0);
+    const cols = ['#f4a261', '#2a9d8f', '#e9c46a'];
+    for (let i = 0; i < 3; i++) {
+      const z = d / 2 - 2 - i * (d - 4) / 3, ph = h * (0.55 + i * 0.2);
+      box(g, w - 2, ph * 0.9, 0.3, std(cols[i], 0.8), 0, ph * 0.45 + 0.6, z - 1);
+      box(g, w, ph * 0.5, 0.3, M.glass, 0, ph * 0.25 + 0.6, z);
+    }
+    box(g, w, h, 0.3, M.glass, 0, h / 2, -d / 2 + 0.2);
+  }
+
+  function nameplate(g, it, M) {
+    const THREE = window.THREE;
+    const r = Math.max(it.h, it.d) / 1.5;
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, it.w, 3), M.main);
+    m.rotation.z = Math.PI / 2; m.rotation.x = Math.PI / 2;
+    m.scale.set(1, 1, 1);
+    m.position.y = r * 0.5;
+    m.castShadow = true; g.add(m);
+  }
+
+  function tablet(g, it, M) {
+    const { w, d, h } = it;
+    box(g, w * 0.5, 1, d * 0.8, M.stand, 0, 0.5, 0);
+    const sh = Math.min(h / Math.cos(0.35), w * 0.72);
+    const t = tilted(g, 0.35, d / 2 - 4);
+    box(t, w, sh, 0.8, [M.main, M.main, M.main, M.main, M.face, M.main], 0, sh / 2 + 1, 0);
+    box(g, 3, h * 0.7, 1, M.stand, 0, h * 0.35, -d / 2 + 3).rotation.x = -0.35;
+  }
+
+  function tv(g, it, M) {
+    const { w, d, h } = it;
+    const sh = w * 9 / 16, bez = 1.2;
+    const cy = h - sh / 2 - bez;
+    // 바퀴 달린 받침 + 기둥 2개
+    box(g, w * 0.55, 4, 6, M.stand, 0, 8, 0);
+    for (const s of [-1, 1]) {
+      box(g, 6, 3, d, M.stand, s * w * 0.25, 6, 0);
+      for (const z of [-1, 1]) cyl(g, 2.5, 2.5, 3, M.dark, s * w * 0.25, 2.5, z * (d / 2 - 4), 12).rotation.x = Math.PI / 2;
+      box(g, 5, cy, 4, M.stand, s * w * 0.18, cy / 2 + 6, -8);
+    }
+    box(g, w + bez * 2, sh + bez * 2, 5, M.main, 0, cy, -3);
+    sheet(g, w, sh, 0.3, M.face, M.main, 0, cy, -0.4);
+  }
+
   const BUILD = {
     'table-rect': tableRect, 'table-square': tableRect, 'table-round': tableRound,
     chair, stool, shelf, platform: blockItem, pedestal: blockItem, box: plainBox,
     laptop: (g, it, M) => laptop(g, it, M), monitor: (g, it, M) => monitor(g, it, M),
     terminal, kiosk, person160: person, person175: person,
+    tablet, tv, paper, book, acrylic, solid, vase, plant, case: glassCase, leaflet, nameplate,
   };
+
+  /* --- 작품/화면 이미지 텍스처 ------------------------------------------ */
+  /**
+   * 이미지(asset)를 cmW×cmH 비율 캔버스에 그린 재질. 이미지가 없으면 자리표시.
+   * kind: 'art'(종이, 흰 바탕) | 'screen'(화면, 꺼진 화면색)
+   */
+  function faceMaterial(it, cmW, cmH, kind) {
+    const THREE = window.THREE;
+    const img = it.img ? BS.assetImage(it.img) : null;
+    if (!img && kind === 'screen') {
+      return new THREE.MeshStandardMaterial({ color: '#0d1b2a', roughness: 0.25, emissive: '#1b3a5c', emissiveIntensity: 0.6 });
+    }
+    const long = kind === 'art' ? 2048 : 1024;
+    const ppc = long / Math.max(cmW, cmH, 1);
+    const cv = document.createElement('canvas');
+    cv.width = Math.max(8, Math.round(cmW * ppc)); cv.height = Math.max(8, Math.round(cmH * ppc));
+    const ctx = cv.getContext('2d');
+    if (img) {
+      BS.panels.drawCell(ctx, { mode: 'image', img: it.img, fit: it.fit || (kind === 'screen' ? 'cover' : 'contain'), bg: kind === 'screen' ? '#000000' : '#ffffff' }, 0, 0, cv.width, cv.height, ppc, cmW, cmH);
+    } else {
+      ctx.fillStyle = '#fbfbf8'; ctx.fillRect(0, 0, cv.width, cv.height);
+      ctx.strokeStyle = '#d8dce1'; ctx.lineWidth = Math.max(2, cv.width * 0.01);
+      ctx.strokeRect(cv.width * 0.06, cv.height * 0.06, cv.width * 0.88, cv.height * 0.88);
+      ctx.fillStyle = '#9aa3ad'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.font = `600 ${Math.min(cv.width, cv.height) * 0.08}px ${BS.FONT}`;
+      ctx.fillText('작품 이미지', cv.width / 2, cv.height / 2);
+    }
+    const tex = new THREE.CanvasTexture(cv);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = BS.scene.maxAniso;
+    return new THREE.MeshStandardMaterial({
+      map: tex, roughness: kind === 'screen' ? 0.3 : 0.85,
+      emissive: '#ffffff', emissiveMap: tex, emissiveIntensity: kind === 'screen' ? 0.75 : 0.25,
+    });
+  }
+
+  /** 이미지 면의 실제 크기(cm) */
+  function faceSize(it) {
+    switch (it.type) {
+      case 'paper': case 'acrylic': return [it.pw, it.ph];
+      case 'book': return it.pose === 'open' ? [it.pw * 2, it.ph] : [it.pw, it.ph];
+      case 'tv': return [it.w, it.w * 9 / 16];
+      case 'tablet': return [it.w, it.w * 0.72];
+      case 'laptop': return [it.w, it.d];
+      case 'monitor': return [it.w, it.h * 0.5];
+      case 'kiosk': return [it.w, it.h * 0.34];
+      default: return [it.w, it.h];
+    }
+  }
 
   function buildItem(it, rec) {
     const THREE = window.THREE;
@@ -218,6 +482,28 @@
     };
     if (isDev) M.metal = M.main;
     M.dev = { main: std('#3a3f46', 0.5, 0.2), screen: M.screen };
+    M.paper = std('#f7f6f2', 0.9);
+    M.stand = std('#c9ced4', 0.4, 0.3);
+    M.dark = std('#222222', 0.7);
+    M.soil = std('#4a3728', 1);
+    M.leaf = std('#4f8a3c', 0.85);
+    M.glass = new THREE.MeshStandardMaterial({ color: '#dff1ff', roughness: 0.05, transparent: true, opacity: 0.22, depthWrite: false });
+    const def = I.LIB[it.type] || {};
+    if (def.image) {
+      const [fw, fh] = faceSize(it);
+      M.face = faceMaterial(it, fw, fh, def.image);
+      if (def.image === 'screen') { M.screen = M.face; M.dev.screen = M.face; }
+      if (it.type === 'book' && it.pose === 'open') {
+        // 펼친 책: 한 장의 이미지를 왼쪽/오른쪽 면으로 나눠 붙임
+        const L = M.face.clone(), R = M.face.clone();
+        for (const [m, off] of [[L, 0], [R, 0.5]]) {
+          if (!m.map) continue;
+          const t = m.map.clone(); t.repeat.set(0.5, 1); t.offset.set(off, 0); t.needsUpdate = true;
+          m.map = t; m.emissiveMap = t;
+        }
+        M.faceL = L; M.faceR = R;
+      }
+    }
     (BUILD[it.type] || plainBox)(inner, it, M);
     rec.mats = [];
     inner.traverse((o) => { if (o.isMesh) { const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach((m) => { if (!rec.mats.includes(m)) rec.mats.push(m); }); } });
@@ -240,7 +526,11 @@
     return group;
   }
 
-  const geoKey = (it) => JSON.stringify([it.type, it.w, it.d, it.h, it.color, !!it.cloth]);
+  const geoKey = (it) => JSON.stringify([it.type, it.w, it.d, it.h, it.color, !!it.cloth, it.pw, it.ph, it.thick, it.pose, it.form,
+    it.img || null, it.fit || null, !!(it.img && BS.assetImage(it.img))]);
+
+  /** 업로드 이미지 로드가 끝나면 그 이미지를 쓰는 물품 다시 만들기 */
+  BS.on('assetLoaded', (id) => { if (BS.state.items.some((i) => i.img === id)) I.sync(); });
 
   /* ---------------------------------------------------------------
    * 3. 상태 → 3D 동기화
@@ -251,6 +541,7 @@
     for (const it of BS.state.items) {
       alive.add(it.id);
       if (I.LIB[it.type] && I.LIB[it.type].round) it.d = it.w; // 원형은 지름 하나
+      if (I.LIB[it.type] && I.LIB[it.type].derive) I.derive(it); // 작품 크기 → 가로·깊이·높이
       let rec = I.map.get(it.id);
       const gk = geoKey(it);
       if (!rec || rec.geoKey !== gk) {
@@ -378,6 +669,8 @@
         if (a.def.ghost || c.def.ghost) continue;
         // 의자는 테이블 아래로 넣을 수 있음
         if ((a.def.chair && c.def.table) || (c.def.chair && a.def.table)) continue;
+        // 투명 케이스 안에 넣은 작품
+        if ((a.def.cover && c.def.stack) || (c.def.cover && a.def.stack)) continue;
         if (a.y1 <= c.y0 + 0.3 || c.y1 <= a.y0 + 0.3) continue; // 높이가 안 겹침(적층)
         if (overlapSAT(a.fp, c.fp)) {
           add(a.e.id, `"${c.e.name}"와 겹침`);

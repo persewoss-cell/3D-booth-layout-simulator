@@ -167,10 +167,11 @@
    * ------------------------------------------------------------- */
   S.loop = function () {
     requestAnimationFrame(S.loop);
-    const dt = Math.min(0.05, S.clock.getDelta());
+    const dt = Math.min(0.1, S.clock.getDelta());
     let changed = false;
 
     if (S.tween) { S.stepTween(); changed = true; }
+    if (S.mode !== 'walk' && S.stepPan(dt)) changed = true;
     if (S.mode === 'walk') { if (S.stepWalk(dt)) changed = true; }
     else if (S.mode === 'ortho') { if (S.orthoControls.update()) changed = true; }
     else if (S.controls.enabled || S.controls.enableDamping) { if (S.controls.update()) changed = true; }
@@ -353,6 +354,39 @@
   };
 
   /* ---------------------------------------------------------------
+   * 방향키 화면 이동 (선택한 물체가 없을 때)
+   *   ↑↓: 화면 앞뒤(바닥과 평행)  ←→: 좌우   Shift: 3배 빠르게
+   *   카메라와 회전 중심을 함께 옮기므로 보는 각도는 그대로 유지
+   * ------------------------------------------------------------- */
+  S.panKeys = {};
+  S.stepPan = function (dt) {
+    const k = S.panKeys;
+    const fwd = (k.arrowup ? 1 : 0) - (k.arrowdown ? 1 : 0);
+    const side = (k.arrowright ? 1 : 0) - (k.arrowleft ? 1 : 0);
+    if (!fwd && !side) return false;
+    const THREE = window.THREE;
+    const ortho = S.mode === 'ortho';
+    const cam = ortho ? S.ortho : S.persp;
+    const ctl = ortho ? S.orthoControls : S.controls;
+    // 멀리서 볼수록 빠르게
+    const dist = ortho ? S.orthoSpan / cam.zoom : cam.position.distanceTo(ctl.target);
+    const speed = U.clamp(dist * 0.6, 40, 1500) * (S.panFast ? 3 : 1) * dt;
+    let f, r;
+    if (ortho) { f = new THREE.Vector3(0, 0, -1); r = new THREE.Vector3(1, 0, 0); } // 평면도: 위쪽 = 뒷벽
+    else {
+      f = new THREE.Vector3(); cam.getWorldDirection(f); f.y = 0;
+      if (f.lengthSq() < 1e-6) f.set(0, 0, -1);
+      f.normalize();
+      r = new THREE.Vector3().crossVectors(f, new THREE.Vector3(0, 1, 0)).normalize();
+    }
+    const move = f.multiplyScalar(fwd * speed).add(r.multiplyScalar(side * speed));
+    cam.position.add(move);
+    ctl.target.add(move);
+    S.tween = null;
+    return true;
+  };
+
+  /* ---------------------------------------------------------------
    * 포커스: 선택 물체를 화면 가운데로 부드럽게
    * ------------------------------------------------------------- */
   S.focusObject = function (obj3d, normal) {
@@ -383,7 +417,7 @@
       dir.normalize();
     }
     const span = normal ? Math.max(size.x, size.z, size.y) : Math.max(size.x, size.y, size.z);
-    const dist = Math.max(45, S.fitDistance(span, span, 1.7));
+    const dist = Math.max(span < 60 ? 80 : 45, S.fitDistance(span, span, 1.7));
     S.flyTo(c.clone().addScaledVector(dir, dist), c);
   };
 
@@ -421,7 +455,7 @@
       ls.renderOrder = 1;
       S.gridGroup.add(ls);
     });
-    S.gridGroup.visible = !!BS.state.settings.grid;
+    S.gridGroup.visible = !!BS.state.settings.grid && BS.app.hasDoc !== false;
     S.requestRender();
   };
 
@@ -505,7 +539,7 @@
     if (anyWall) {
       S.dimLine(S.dimGroup, V(-W / 2 - t, 0, -D / 2 - t), V(-W / 2 - t, H, -D / 2 - t), V(-30, 0, 0), `높이 ${U.fmt(H)} cm`, { labelSize: ls });
     }
-    S.dimGroup.visible = !!BS.state.settings.dims;
+    S.dimGroup.visible = !!BS.state.settings.dims && BS.app.hasDoc !== false;
     S.requestRender();
   };
 

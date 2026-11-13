@@ -13,7 +13,7 @@
 
   /** 자유 패널 거치대 종류 */
   P.STANDS = {
-    board: { label: '자유 패널(받침발)', foot: 36, y: 3 },
+    board: { label: '패널(받침발)', foot: 36, y: 3 },
     rollup: { label: '롤업 배너', foot: 30, y: 9 },
     xbanner: { label: 'X배너(독립형)', foot: 44, y: 6 },
     sign: { label: '입간판', foot: 42, y: 45 },
