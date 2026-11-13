@@ -639,6 +639,8 @@
       Math.abs((elev[it.id] || 0) - sup.h) < 0.01 && pointInPoly({ x: it.x, z: it.z }, fp));
   };
 
+  const OUTSIDE = I.OUTSIDE_MSG = '부스 밖으로 나감';
+
   /**
    * 충돌/부스 밖 판정 — 집기 + 자유 패널
    * @returns { id: [메시지...] }
@@ -661,7 +663,8 @@
     const add = (id, m) => { (res[id] = res[id] || []).includes(m) || res[id].push(m); };
     for (const a of info) {
       if (a.def.ghost) continue;
-      if (a.fp.some((p) => p.x < -W - 0.3 || p.x > W + 0.3 || p.z < -D - 0.3 || p.z > D + 0.3)) add(a.e.id, '부스 밖으로 나감');
+      if (a.e.allowOutside) continue; // 사용자가 '부스 밖 허용'으로 무시한 물건
+      if (a.fp.some((p) => p.x < -W - 0.3 || p.x > W + 0.3 || p.z < -D - 0.3 || p.z > D + 0.3)) add(a.e.id, OUTSIDE);
     }
     for (let i = 0; i < info.length; i++) {
       for (let j = i + 1; j < info.length; j++) {

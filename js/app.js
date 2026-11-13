@@ -177,6 +177,7 @@
     A.warnings = w;
     for (const p of BS.state.panels) BS.panels.setStatus(p.id, p.id === A.selId, !!w[p.id]);
     for (const it of BS.state.items) BS.items.setStatus(it.id, it.id === A.selId, !!w[it.id]);
+    BS.scene.requestRender(); // 색이 바뀌었으니 다시 그리기
     BS.emit('warnings', w);
   };
 

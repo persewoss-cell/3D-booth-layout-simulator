@@ -559,9 +559,28 @@
   function renderSelWarn() {
     const box = document.getElementById('sel-warn');
     if (!box) return;
-    const w = BS.app.warnings[BS.app.selId];
+    const id = BS.app.selId;
+    const e = BS.find(id);
+    const w = BS.app.warnings[id];
     box.innerHTML = '';
-    if (w) box.appendChild(el('div', { class: 'warn-box' }, '⚠ ' + w.join(' · ')));
+    if (!e) return;
+    const canOutside = e.kind === 'item' || e.mount === 'free'; // 바닥에 놓는 물건만
+    // '부스 밖으로 나감' 경고는 무시할 수 있음 (통로의 배너, 안내판 등)
+    const setOutside = (v) => {
+      e.allowOutside = v || undefined;
+      BS.app.evaluate(); BS.app.commit(); renderSelWarn(); renderSelbar();
+      BS.toast(v ? `"${e.name}"은(는) 부스 밖에 있어도 경고하지 않습니다` : `"${e.name}"의 부스 밖 경고를 다시 표시합니다`);
+    };
+    if (w) {
+      const outside = w.includes(BS.items.OUTSIDE_MSG);
+      box.appendChild(el('div', { class: 'warn-box' }, '⚠ ' + w.join(' · '),
+        outside && canOutside ? el('div', { class: 'warn-actions' },
+          button('무시하기 (부스 밖에 둬도 됨)', () => setOutside(true), 'sm')) : null));
+    }
+    if (e.allowOutside && canOutside) {
+      box.appendChild(el('div', { class: 'ok-box' }, '부스 밖 경고를 무시하는 중',
+        button('다시 경고 받기', () => setOutside(false), 'sm')));
+    }
   }
 
   /** 위치 입력 (부스 왼쪽 벽/뒷벽 기준 거리로 표시) */

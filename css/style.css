@@ -137,6 +137,10 @@ kbd { background: #f1f3f5; border: 1px solid #d0d5dc; border-bottom-width: 2px; 
 .sel-head { padding: 10px 0 4px; }
 .sel-title .kind { font-size: 11.5px; font-weight: 700; color: var(--accent); background: var(--accent-soft); padding: 2px 8px; border-radius: 99px; }
 .sel-actions { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.warn-actions { margin-top: 6px; }
+.warn-actions .btn { color: var(--ink); font-weight: 600; }
+.ok-box .btn { white-space: nowrap; flex: none; }
+.ok-box { margin-top: 8px; display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--soft); border: 1px solid var(--line); color: var(--muted); padding: 5px 6px 5px 9px; border-radius: 8px; font-size: 12px; }
 .warn-box { margin-top: 8px; background: #fff0f0; color: var(--danger); border: 1px solid #ffc9c9; padding: 6px 9px; border-radius: 8px; font-size: 12.5px; font-weight: 600; }
 
 /* 칸 편집 */
