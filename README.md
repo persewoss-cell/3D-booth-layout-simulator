@@ -7,13 +7,66 @@
 
 | 방법 | 설명 |
 | --- | --- |
-| 더블클릭 | 폴더째 내려받아 `index.html` 을 더블클릭 (인터넷 연결 필요: three.js 를 CDN에서 불러옴) |
-| GitHub Pages | 저장소 Settings → Pages → 브랜치 선택 → 발급된 주소로 접속 |
-| 구글 사이트 | GitHub Pages 주소를 **삽입 → URL로 삽입** 하세요. ("코드 삽입"은 css/js 파일을 못 찾으므로 URL 방식 권장) |
+| Vercel (권장) | 클라우드 저장·공유 링크까지 사용. 아래 "클라우드 저장" 설정 참고 |
+| 더블클릭 | 폴더째 내려받아 `index.html` 을 더블클릭 (인터넷 연결 필요: three.js 를 CDN에서 불러옴). 저장은 브라우저 자동저장과 JSON 파일로 |
+| GitHub Pages | 저장소 Settings → Pages → 브랜치 선택. 서버 코드를 못 돌리므로 클라우드 저장은 Vercel API 주소를 따로 지정해야 함 |
+| 구글 사이트 | 배포된 주소를 **삽입 → URL로 삽입** 하세요. ("코드 삽입"은 css/js 파일을 못 찾으므로 URL 방식 권장) |
 
 처음 열면 **부스 형태(ㄷ자·ㅡ자·ㄴ자·독립형 섬·칸막이 패널형)와 크기**를 고르는 창이 뜹니다.
 "예시 배치 넣기"를 켜 두면 300×300 ㄷ자 부스, 뒷벽의 연구학교 5개교 현수막(2열×3행, 칸당 100×70cm),
 테이블 2개, 의자 4개가 놓인 데모 장면으로 시작합니다.
+
+## 클라우드 저장 (MongoDB) — Vercel 배포
+
+[파일] 탭이나 툴바의 **☁ 저장**을 누르면 MongoDB 에 저장되고 **공유 링크**(`…/?id=xxxxxxxxxx`)가 생깁니다.
+
+- 링크가 있으면 **누구나 볼 수** 있고, 저장할 때 정한 **편집 비밀번호**를 아는 사람만 덮어쓸 수 있습니다.
+  (비밀번호는 서버에 scrypt 해시로만 저장되며 찾을 수 없습니다.)
+- 비밀번호를 모르면 **복사본으로 저장**해서 내 링크를 새로 만들 수 있습니다.
+- 다른 사람이 먼저 저장했으면 덮어쓸지 물어봅니다 (버전 확인).
+- 저장하지 않은 변경은 이 브라우저에 남아 있어서, 새로고침해도 이어서 편집할 수 있습니다.
+- 업로드 이미지는 배치와 따로 한 장씩 저장합니다 (Vercel 요청 4.5MB 제한, MongoDB 문서 16MB 제한 대응).
+
+### 처음 한 번 설정
+
+1. **MongoDB Atlas** (https://cloud.mongodb.com) 에서 무료(M0) 클러스터를 만듭니다.
+   - Database Access: DB 사용자(아이디/비밀번호) 추가
+   - Network Access: `0.0.0.0/0` 허용 (Vercel 서버 IP가 고정되어 있지 않기 때문)
+   - Connect → Drivers 에서 접속 문자열(`mongodb+srv://…`) 복사
+2. **Vercel** (https://vercel.com) → Add New Project → 이 GitHub 저장소 선택
+   - Framework Preset: **Other**, Build Command·Output Directory 는 비워 둠
+   - Environment Variables:
+     - `MONGODB_URI` = 1번에서 복사한 접속 문자열 (비밀번호 부분을 실제 값으로)
+     - `MONGODB_DB` = `booth_simulator` (선택)
+   - Deploy → 발급된 `https://….vercel.app` 주소로 접속
+3. 구글 사이트에는 Vercel 주소를 **삽입 → URL로 삽입** 하세요.
+
+> 앱 화면만 GitHub Pages 에 두고 API 는 Vercel 을 쓰려면, `index.html` 의
+> `<meta name="booth-api" content="">` 에 Vercel 주소(예: `https://my-booth.vercel.app`)를 넣으세요.
+> 파일을 더블클릭해 연 경우(file://)에는 이 주소를 넣지 않으면 클라우드 저장 버튼이 숨겨집니다.
+
+### 로컬에서 실행해 보기
+
+```bash
+npm install
+cp .env.example .env      # MONGODB_URI 입력
+npm run dev               # http://localhost:3000
+```
+
+MongoDB 없이 화면만 시험하려면 `npm run dev:memory` (메모리 DB, 서버를 끄면 데이터가 사라짐).
+
+### API
+
+| 요청 | 설명 |
+| --- | --- |
+| `POST /api/layouts` | 새 배치 `{ title, password, data, assetIds }` → `{ id, version, missing }` |
+| `GET /api/layouts/:id` | 배치 불러오기 (비밀번호 불필요) |
+| `PUT /api/layouts/:id` | 덮어쓰기 `{ password, title, data, assetIds, baseVersion, force? }` → 403 비밀번호 틀림 / 409 버전 충돌 |
+| `DELETE /api/layouts/:id` | 삭제 `{ password }` |
+| `POST /api/assets` | 이미지 1장 `{ layoutId, password, assetId, data }` |
+| `GET /api/assets?layout=…&id=…` | 이미지 1장 (dataURL, 오래 캐시) |
+
+MongoDB 컬렉션: `layouts` (배치, 이미지 제외), `assets` (이미지, `layoutId` 인덱스).
 
 ## 주요 기능
 
@@ -30,7 +83,7 @@
   - 겹치거나 부스 밖으로 나가면 빨간색 (의자는 테이블 아래로 넣을 수 있음)
   - 노트북·모니터·상자는 테이블/선반/전시단 위에 놓으면 높이가 자동으로 올라가고, 테이블을 옮기면 함께 움직임
 - **목록(레이어)**: 이름 클릭 선택, 더블클릭 포커스, 🔒 잠금, 👁 숨김
-- **저장**: 브라우저 자동 저장(localStorage), JSON 내보내기/불러오기(업로드 이미지 포함)
+- **저장**: 클라우드(MongoDB) 저장·공유 링크, 브라우저 자동 저장(localStorage), JSON 내보내기/불러오기(업로드 이미지 포함)
 - **내보내기**: 3D 스크린샷 PNG, **평면도 + 벽면 입면도** PNG/PDF(A3, 번호·규격·설치 위치 표기), 물품 목록 CSV(엑셀용)
 
 ## 단축키
@@ -46,7 +99,7 @@
 | `1`~`6` | 정면 · 좌측 · 우측 · 평면도 · 조감 · 눈높이 |
 | `G` / `M` | 격자 / 치수선 |
 | `Esc` | 선택 해제, 걷기 모드 종료 |
-| `Ctrl+S` | JSON 내보내기 |
+| `Ctrl+S` | 클라우드 저장 (클라우드를 쓸 수 없을 때는 JSON 내보내기) |
 
 ## 파일 구조
 
@@ -62,6 +115,10 @@ js/interaction.js 클릭 선택 · 드래그 · 키보드 단축키
 js/storage.js     자동 저장 · JSON · 스크린샷 · 평면도/입면도 · CSV · 이미지/PDF 업로드
 js/ui.js          설정 패널(부스/추가/선택/목록/파일) · 툴바 · 처음 설정 창
 js/app.js         앱 초기화 · 변경 반영 · 선택 · 추가/삭제/복제/회전 · 데모 장면
+js/cloud.js       클라우드 저장 · 공유 링크 · 편집 비밀번호 · 버전 충돌 처리
+api/              Vercel 서버리스 함수 (layouts, assets)
+lib/              API 공용: MongoDB 연결(db.js), 저장 로직(layouts.js), HTTP 헬퍼, 시험용 메모리 DB
+dev-server.js     로컬 개발 서버 (npm run dev / npm run dev:memory)
 ```
 
 `js/*.js` 는 ES 모듈이 아닌 일반 스크립트(전역 `BS` 네임스페이스)입니다.

@@ -1,0 +1,17 @@
+{
+  "name": "booth-layout-simulator",
+  "version": "1.1.0",
+  "private": true,
+  "description": "수업나눔페스타 부스 배치 3D 시뮬레이터 (정적 앱 + Vercel 서버리스 API + MongoDB)",
+  "type": "module",
+  "scripts": {
+    "dev": "node dev-server.js",
+    "dev:memory": "node dev-server.js --memory"
+  },
+  "dependencies": {
+    "mongodb": "^6.10.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

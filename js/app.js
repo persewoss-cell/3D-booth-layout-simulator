@@ -17,6 +17,7 @@
     BS.interaction.init();
 
     const loaded = BS.storage.loadLocal();
+    const cloudLink = BS.cloud.urlId(); // ?id= 공유 링크로 열었는지
     if (!loaded) A.loadDemo();
     A.rebuildAll();
     BS.history.reset();
@@ -26,7 +27,9 @@
     jumpDiag();
 
     // 저장된 장면이 없으면(처음 방문) 부스 형태 설정 창을 먼저 띄움
-    if (!loaded) BS.ui.openSetup(true);
+    if (!loaded && !cloudLink) BS.ui.openSetup(true);
+    // 클라우드(MongoDB) 저장 배치 불러오기 / 연결 상태 표시
+    BS.cloud.startup();
 
     BS.on('restored', () => { A.rebuildAll(); if (A.selId && !BS.find(A.selId)) A.select(null); BS.ui.renderAll(); });
     BS.on('dirty', () => BS.storage.autosave());
@@ -86,6 +89,8 @@
 
   /** 빈 부스로 새로 시작 */
   A.newBooth = function (shape, W, D, H, withDemo) {
+    // 새 부스는 클라우드 링크와 분리된 새 배치로 시작
+    if (BS.cloud.id) BS.cloud.disconnect();
     if (withDemo) A.loadDemo(shape, W, D, H);
     else {
       Object.assign(BS.state, {

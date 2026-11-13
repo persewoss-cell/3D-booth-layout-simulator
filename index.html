@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>부스 배치 시뮬레이터</title>
   <meta name="description" content="수업나눔페스타 전시 부스를 실제 크기(cm)로 3D 배치해 보는 시뮬레이터">
+  <!-- 클라우드 저장 API 주소. 비워 두면 같은 주소의 /api 사용(Vercel 배포).
+       앱을 GitHub Pages 등 다른 곳에 올렸다면 Vercel 주소를 넣으세요. 예) https://my-booth.vercel.app -->
+  <meta name="booth-api" content="">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700;800&display=swap">
@@ -30,6 +33,7 @@
           <div>
             <h1>부스 배치 시뮬레이터</h1>
             <p id="save-state" class="muted">자동 저장됨</p>
+            <p id="cloud-state" class="muted"></p>
           </div>
         </div>
         <button id="btn-panel-close" class="icon-btn" title="패널 접기" aria-label="패널 접기">«</button>
@@ -79,6 +83,7 @@
           <button class="tb-btn" id="btn-undo" title="실행취소 (Ctrl+Z)">↶</button>
           <button class="tb-btn" id="btn-redo" title="다시실행 (Ctrl+Shift+Z)">↷</button>
           <button class="tb-btn" id="btn-shot" title="스크린샷 PNG 저장">📷</button>
+          <button class="tb-btn" id="btn-cloud" hidden>☁ 저장</button>
         </div>
       </div>
 
@@ -120,6 +125,7 @@
   <script src="js/interaction.js"></script>
   <script src="js/storage.js"></script>
   <script src="js/ui.js"></script>
+  <script src="js/cloud.js"></script>
   <script src="js/app.js"></script>
 
   <!-- three.js 를 불러온 뒤 앱 시작 -->

@@ -16,24 +16,26 @@
   /* ---------------------------------------------------------------
    * 1. localStorage 자동 저장
    * ------------------------------------------------------------- */
-  function payload(includeAssets = true) {
+  function payload(includeAssets = true, withCloud = false) {
     const s = BS.state;
     return {
       app: 'booth-simulator', version: 1, savedAt: new Date().toISOString(),
       title: s.title, booth: s.booth, panels: s.panels, items: s.items, settings: s.settings,
       assets: includeAssets ? BS.usedAssets() : {},
+      // 브라우저 자동저장에만: 연결된 클라우드 배치 정보 (JSON 내보내기에는 넣지 않음)
+      cloud: withCloud && BS.cloud ? BS.cloud.meta() : undefined,
     };
   }
 
   let warnedQuota = false;
   ST.saveLocal = function () {
     try {
-      localStorage.setItem(KEY, JSON.stringify(payload(true)));
+      localStorage.setItem(KEY, JSON.stringify(payload(true, true)));
       BS.emit('saved', true);
     } catch (err) {
       // 이미지 용량 초과 시 이미지 없이라도 저장
       try {
-        localStorage.setItem(KEY, JSON.stringify(payload(false)));
+        localStorage.setItem(KEY, JSON.stringify(payload(false, true)));
         if (!warnedQuota) {
           warnedQuota = true;
           BS.toast('이미지 용량이 커서 브라우저 자동저장에서 이미지가 빠졌습니다. [파일] 탭에서 JSON으로 내보내 보관하세요.', 'warn', 6000);
@@ -48,7 +50,10 @@
     try {
       const raw = localStorage.getItem(KEY);
       if (!raw) return false;
-      return ST.applyPayload(JSON.parse(raw), true);
+      const o = JSON.parse(raw);
+      const ok = ST.applyPayload(o, true);
+      if (ok && BS.cloud) BS.cloud.restoreMeta(o.cloud);
+      return ok;
     } catch (e) { console.warn(e); return false; }
   };
 

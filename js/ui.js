@@ -36,6 +36,7 @@
     document.getElementById('btn-undo').onclick = () => BS.history.undo();
     document.getElementById('btn-redo').onclick = () => BS.history.redo();
     document.getElementById('btn-shot').onclick = () => BS.storage.screenshot();
+    document.getElementById('btn-cloud').onclick = () => BS.cloud.save();
     document.getElementById('btn-walk-exit').onclick = () => { BS.scene.setMode('orbit'); BS.scene.setView('diag'); };
 
     // 걷기 패드 (누르고 있는 동안 이동)
@@ -673,7 +674,9 @@
   function renderFile() {
     const pane = document.getElementById('tab-file');
     pane.innerHTML = '';
-    pane.appendChild(section('저장 · 불러오기',
+    pane.appendChild(section('클라우드 저장 · 공유 링크', el('div', { id: 'cloud-box' })));
+    BS.cloud.render();
+    pane.appendChild(section('파일로 저장 · 불러오기',
       el('p', { class: 'hint' }, '작업 내용은 이 브라우저에 자동 저장됩니다. 다른 컴퓨터로 옮기거나 보관하려면 JSON 파일로 내보내세요 (올린 이미지 포함).'),
       el('div', { class: 'btn-col' },
         button('💾 JSON 파일로 내보내기', () => BS.storage.exportJSON(), 'primary'),
@@ -735,6 +738,7 @@
   UI.openSetup = function (first) {
     const modal = document.getElementById('modal');
     const card = modal.querySelector('.modal-card');
+    if (UI._onClose) UI.closeModal();
     card.innerHTML = '';
     UI.modalLocked = false;
     const cfg = { shape: BS.state.booth.shape || 'U', w: BS.state.booth.width || 300, d: BS.state.booth.depth || 300, h: BS.state.booth.height || 240, demo: true };
@@ -776,6 +780,7 @@
     const modal = document.getElementById('modal');
     if (modal.hidden) return false;
     modal.hidden = true;
+    if (UI._onClose) { const f = UI._onClose; UI._onClose = null; f(); } // 대화상자 취소 처리
     return true;
   };
 })(window.BS);

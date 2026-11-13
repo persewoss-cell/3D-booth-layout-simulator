@@ -201,7 +201,7 @@
     if (mod && key === 'y') { e.preventDefault(); BS.history.redo(); return; }
     if (BS.isTyping()) return;
     if (mod && key === 'd') { e.preventDefault(); BS.app.duplicate(); return; }
-    if (mod && key === 's') { e.preventDefault(); BS.storage.exportJSON(); return; }
+    if (mod && key === 's') { e.preventDefault(); if (BS.cloud.available()) BS.cloud.save(); else BS.storage.exportJSON(); return; }
     if (key === 'escape') {
       if (BS.ui.closeModal()) return;
       if (S.mode === 'walk') { S.setMode('orbit'); S.setView('diag'); return; }
