@@ -241,7 +241,7 @@
     const reb = () => renderBooth();
 
     pane.appendChild(section('부스 형태',
-      shapePicker(() => b.shape, (k) => { BS.booth.applyShape(k); BS.app.changed('booth'); BS.app.commit(); reb(); }),
+      shapePicker(() => b.shape, (k) => { BS.booth.applyShape(k); BS.app.changed('booth'); BS.app.commit(); reb(); warnFloating(); }),
     ));
 
     pane.appendChild(section('크기',
@@ -283,6 +283,12 @@
       text({ label: '제목', get: () => BS.state.title, set: (v) => { BS.state.title = v; }, what: 'none' }),
       button('처음 설정 창 다시 열기', () => UI.openSetup(false), 'wide'),
     ));
+  }
+
+  /** 벽이 꺼져서 떠 있는 벽 현수막 안내 */
+  function warnFloating() {
+    const n = BS.state.panels.filter((p) => p.mount === 'wall' && !BS.state.booth.walls[p.wall].on).length;
+    if (n) BS.toast(`꺼진 벽에 붙은 현수막이 ${n}개 있습니다. [선택] 탭에서 다른 벽으로 옮기거나 '바닥에 세우기'로 바꾸세요.`, 'warn', 5500);
   }
 
   /* ---------------------------------------------------------------

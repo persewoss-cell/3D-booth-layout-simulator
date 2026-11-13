@@ -74,7 +74,7 @@
     st.items.push(it('chair', { name: '의자 3', x: W / 2 - 90, z: -D / 2 + 95, rot: 90 }));
     st.items.push(it('chair', { name: '의자 4', x: W / 2 - 90, z: -D / 2 + 155, rot: 90 }));
     st.items.push(it('laptop', { name: '노트북', x: 40, z: fz }));
-    st.items.push(it('person175', { name: '관람객 175cm', x: -W / 2 + 25, z: D / 2 + 55, rot: 180 }));
+    st.items.push(it('person175', { name: '관람객 175cm', x: -W / 2 - 45, z: D / 2 + 45, rot: 150 }));
     return st;
   };
 

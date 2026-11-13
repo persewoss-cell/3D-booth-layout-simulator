@@ -107,6 +107,7 @@ window.BS = window.BS || {};
     if (!box) { console.log(msg); return; }
     const t = U.el('div', { class: 'toast-item ' + kind }, msg);
     box.appendChild(t);
+    while (box.children.length > 3) box.firstChild.remove(); // 최대 3개만 표시
     setTimeout(() => { t.classList.add('hide'); setTimeout(() => t.remove(), 400); }, ms);
   };
 
