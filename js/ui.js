@@ -51,6 +51,7 @@
     document.querySelector('#welcome [data-act=new]').onclick = () => UI.openNew();
     document.querySelector('#welcome [data-act=open]').onclick = () => BS.cloud.openDialog();
     document.getElementById('btn-insp-close').onclick = () => BS.app.select(null);
+    document.getElementById('btn-help').onclick = () => UI.openHelp();
     document.getElementById('btn-walk-exit').onclick = () => { BS.scene.setMode('orbit'); BS.scene.setView('diag'); };
 
     // 걷기 패드 (누르고 있는 동안 이동)
@@ -863,20 +864,50 @@
       el('div', { class: 'btn-col' },
         button('💾 JSON 파일로 내보내기', () => BS.storage.exportJSON()),
         button('📂 JSON 파일 불러오기', () => document.getElementById('file-json').click()))));
-    pane.appendChild(fold('file.keys', '조작 방법',
-      el('ul', { class: 'keys' },
-        el('li', null, '마우스 왼쪽 드래그: 회전 · 휠: 확대/축소 · 오른쪽 드래그: 화면 이동'),
-        el('li', null, '터치: 한 손가락 회전 · 두 손가락 확대/이동'),
-        el('li', null, el('kbd', null, '방향키'), ' 아무것도 선택하지 않았을 때 화면을 앞뒤·좌우로 이동 (Shift: 빠르게)'),
-        el('li', null, el('kbd', null, '방향키'), ' 물체를 선택했을 때 스냅 간격만큼 이동 (Shift: 10cm)'),
-        el('li', null, el('kbd', null, '드래그'), ' 물체 이동 (벽 현수막은 벽 위에서)'),
-        el('li', null, el('kbd', null, 'R'), ' / ', el('kbd', null, 'Shift+R'), ' 15° 회전   ', el('kbd', null, 'F'), ' 포커스'),
-        el('li', null, el('kbd', null, 'Ctrl+D'), ' 복제   ', el('kbd', null, 'Delete'), ' 삭제   ', el('kbd', null, 'Esc'), ' 선택 해제'),
-        el('li', null, el('kbd', null, 'Ctrl+Z'), ' 실행취소   ', el('kbd', null, 'Ctrl+Shift+Z'), ' 다시실행   ', el('kbd', null, 'Ctrl+S'), ' 바로 저장'),
-        el('li', null, el('kbd', null, '1~6'), ' 시점 전환   ', el('kbd', null, 'G'), ' 격자   ', el('kbd', null, 'M'), ' 치수'),
-        el('li', null, '눈높이 시점: W/A/S/D·화살표로 걷기, Q/E 회전, 드래그로 둘러보기'),
-        el('li', null, '빨간색 = 다른 물체와 겹치거나 부스/벽 밖으로 나간 상태'))));
   }
+
+  /* ---------------------------------------------------------------
+   * 조작 방법 팝업 ([조작방법] 버튼 또는 ? 키)
+   * ------------------------------------------------------------- */
+  UI.openHelp = function () {
+    const modal = document.getElementById('modal');
+    const card = modal.querySelector('.modal-card');
+    if (UI._onClose) UI.closeModal();
+    card.innerHTML = '';
+    const k = (t) => el('kbd', null, t);
+    const tr = (keys, desc) => el('tr', null, el('td', null, ...keys), el('td', null, desc));
+    card.append(
+      el('h2', { id: 'modal-title' }, '조작 방법'),
+      el('h3', null, '화면 보기'),
+      el('table', { class: 'help-table' },
+        tr(['마우스 왼쪽 드래그'], '화면 회전'),
+        tr(['마우스 휠'], '확대 / 축소'),
+        tr(['마우스 오른쪽 드래그'], '화면 이동'),
+        tr(['한 손가락 / 두 손가락'], '터치: 회전 / 확대·이동'),
+        tr([k('방향키')], '아무것도 선택하지 않았을 때 화면을 앞뒤·좌우로 이동 (Shift: 빠르게)'),
+        tr([k('1'), '~', k('6')], '정면 · 좌측 · 우측 · 평면도 · 조감 · 눈높이'),
+        tr([k('G'), ' ', k('M')], '바닥 격자 / 치수선 켜기·끄기'),
+        tr(['눈높이 시점'], 'W/A/S/D·방향키로 걷기, Q/E 회전, 드래그로 둘러보기, Esc 종료')),
+      el('h3', null, '물체 다루기'),
+      el('table', { class: 'help-table' },
+        tr(['클릭 / 드래그'], '선택 / 이동 (벽 현수막은 벽 위에서)'),
+        tr([k('방향키')], '선택한 물체를 스냅 간격만큼 이동 (Shift: 10cm)'),
+        tr([k('R'), ' ', k('Shift+R')], '15° 회전'),
+        tr([k('F'), ' / 더블클릭'], '선택한 물체로 화면 이동(포커스)'),
+        tr([k('Ctrl+D')], '복제'),
+        tr([k('Delete')], '삭제'),
+        tr([k('Esc')], '선택 해제')),
+      el('h3', null, '저장 · 되돌리기'),
+      el('table', { class: 'help-table' },
+        tr([k('Ctrl+Z')], '실행취소'),
+        tr([k('Ctrl+Shift+Z')], '다시실행'),
+        tr([k('Ctrl+S')], '바로 저장 (평소에는 고칠 때마다 자동 저장)')),
+      el('p', { class: 'hint' }, '빨간색으로 보이면 다른 물체와 겹치거나 부스·벽 밖으로 나간 상태입니다. 테이블을 먼저 선택한 뒤 작품을 추가하면 그 위에 놓입니다.'),
+      el('div', { class: 'modal-actions' }, button('닫기', () => UI.closeModal(), 'primary')),
+    );
+    modal.hidden = false;
+  };
+
 
   /* ---------------------------------------------------------------
    * 선택 물체 빠른 조작 막대 (화면 하단)

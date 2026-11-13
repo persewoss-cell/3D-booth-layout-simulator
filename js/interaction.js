@@ -233,6 +233,7 @@
     const views = { 1: 'front', 2: 'left', 3: 'right', 4: 'top', 5: 'diag', 6: 'eye' };
     if (views[key]) { S.setView(views[key]); return; }
     if (key === 'g') { BS.ui.toggleSetting('grid'); return; }
+    if (e.key === '?') { BS.ui.openHelp(); return; }
     if (key === 'm') { BS.ui.toggleSetting('dims'); return; }
   }
 })(window.BS);
