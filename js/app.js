@@ -161,7 +161,11 @@
       BS.items.sync();
     } else if (what === 'panels') BS.panels.sync();
     else if (what === 'items') BS.items.sync();
-    else if (what === 'place') { BS.items.placeAll(); for (const p of BS.state.panels) { const r = BS.panels.map.get(p.id); if (r) BS.panels.place(p, r.group); } }
+    else if (what === 'place') {
+      BS.items.placeAll();
+      const offs = BS.panels.wallOffsets();
+      for (const p of BS.state.panels) { const r = BS.panels.map.get(p.id); if (r) BS.panels.place(p, r.group, offs); }
+    }
     A.evaluate();
     A.refreshSelDims();
     BS.scene.requestRender();

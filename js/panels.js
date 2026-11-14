@@ -273,10 +273,31 @@
   }
 
   /** 위치 반영 (벽 / 바닥) */
-  P.place = function (p, group) {
+  /**
+   * 같은 벽에서 겹친 현수막은 목록 순서대로 앞쪽에 붙인다
+   * (나중 것이 위) → 서로 깜빡이며 섞여 보이지 않게, 현수막 위에 덧붙인 현수막 표현.
+   * @returns { id: 벽에서 띄울 거리(cm) }
+   */
+  P.wallOffsets = function () {
+    const off = {};
+    const ps = BS.state.panels.filter((p) => p.mount === 'wall' && !p.hidden);
+    ps.forEach((p, i) => {
+      let o = 0.15;
+      for (let j = 0; j < i; j++) {
+        const q = ps[j];
+        if (q.wall === p.wall && P.overlapRect(p, q)) o = Math.max(o, off[q.id] + Math.max(0.2, q.thick) + 0.1);
+      }
+      off[p.id] = o;
+    });
+    return off;
+  };
+  P.overlapRect = (p, q) => p.u < q.u + q.w - 0.05 && q.u < p.u + p.w - 0.05 && p.y < q.y + q.h - 0.05 && q.y < p.y + p.h - 0.05;
+
+  P.place = function (p, group, offsets) {
     if (p.mount === 'wall') {
       const info = BS.booth.wallInfo(p.wall);
-      const c = BS.booth.wallToWorld(info, p.u + p.w / 2, p.y + p.h / 2, 0.15);
+      const off = (offsets || P.wallOffsets())[p.id] || 0.15;
+      const c = BS.booth.wallToWorld(info, p.u + p.w / 2, p.y + p.h / 2, off);
       group.position.copy(c);
       group.rotation.set(0, Math.atan2(info.n.x, info.n.z), 0);
       const rec = P.map.get(p.id);
@@ -295,6 +316,7 @@
     const THREE = window.THREE;
     const S = BS.scene;
     const alive = new Set();
+    const offs = P.wallOffsets();
     for (const p of BS.state.panels) {
       BS.defaults.fitCells(p);
       alive.add(p.id);
@@ -322,7 +344,7 @@
         rec.front.needsUpdate = true;
       }
       rec.ent = p;
-      P.place(p, rec.group);
+      P.place(p, rec.group, offs);
     }
     for (const [id, rec] of P.map) {
       if (!alive.has(id)) { S.panelGroup.remove(rec.group); S.disposeObj(rec.group); P.map.delete(id); }
@@ -354,7 +376,8 @@
       if (p.u < -0.05 || p.u + p.w > inf.len + 0.05 || p.y < -0.05 || p.y + p.h > inf.h + 0.05) msgs.push('벽 밖으로 나감');
       for (const q of wallPanels) {
         if (q === p || q.wall !== p.wall) continue;
-        if (p.u < q.u + q.w - 0.05 && q.u < p.u + p.w - 0.05 && p.y < q.y + q.h - 0.05 && q.y < p.y + p.h - 0.05) {
+        if (p.allowOverlap || q.allowOverlap) continue; // 현수막 위에 덧붙인 현수막 (겹침 허용)
+        if (P.overlapRect(p, q)) {
           msgs.push(`"${q.name}"와 겹침`); break;
         }
       }

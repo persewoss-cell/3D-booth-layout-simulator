@@ -571,16 +571,40 @@
       BS.app.evaluate(); BS.app.commit(); renderSelWarn(); renderSelbar();
       BS.toast(v ? `"${e.name}"은(는) 부스 밖에 있어도 경고하지 않습니다` : `"${e.name}"의 부스 밖 경고를 다시 표시합니다`);
     };
+    // 벽 현수막끼리 겹침도 무시할 수 있음 (현수막 위에 현수막을 덧붙이는 경우)
+    const isWall = e.kind === 'panel' && e.mount === 'wall';
+    const setOverlap = (v) => {
+      e.allowOverlap = v || undefined;
+      if (v) bringFront(e); // 덧붙인 현수막이 맨 앞에 보이게
+      BS.app.changed('place'); BS.app.commit(); renderSelWarn();
+      BS.toast(v ? `"${e.name}"은(는) 다른 현수막 위에 붙여도 경고하지 않습니다` : `"${e.name}"의 겹침 경고를 다시 표시합니다`);
+    };
     if (w) {
       const outside = w.includes(BS.items.OUTSIDE_MSG);
+      const overlap = isWall && w.some((m) => m.endsWith('와 겹침'));
       box.appendChild(el('div', { class: 'warn-box' }, '⚠ ' + w.join(' · '),
         outside && canOutside ? el('div', { class: 'warn-actions' },
-          button('무시하기 (부스 밖에 둬도 됨)', () => setOutside(true), 'sm')) : null));
+          button('무시하기 (부스 밖에 둬도 됨)', () => setOutside(true), 'sm')) : null,
+        overlap ? el('div', { class: 'warn-actions' },
+          button('무시하기 (현수막 위에 붙임)', () => setOverlap(true), 'sm')) : null));
     }
     if (e.allowOutside && canOutside) {
       box.appendChild(el('div', { class: 'ok-box' }, '부스 밖 경고를 무시하는 중',
         button('다시 경고 받기', () => setOutside(false), 'sm')));
     }
+    if (e.allowOverlap && isWall) {
+      box.appendChild(el('div', { class: 'ok-box' }, '겹침 경고를 무시하는 중',
+        el('span', { class: 'btn-row', style: { marginTop: 0, flexWrap: 'nowrap' } },
+          button('맨 앞으로', () => { bringFront(e); BS.app.changed('place'); BS.app.commit(); BS.toast(`"${e.name}"을(를) 맨 앞으로 옮겼습니다`); }, 'sm'),
+          button('다시 경고 받기', () => setOverlap(false), 'sm'))));
+    }
+  }
+
+  /** 현수막을 목록 맨 뒤로 → 겹친 현수막 중 맨 앞(위)에 보임 */
+  function bringFront(p) {
+    const arr = BS.state.panels;
+    const i = arr.indexOf(p);
+    if (i >= 0 && i !== arr.length - 1) { arr.splice(i, 1); arr.push(p); renderLayers(); }
   }
 
   /** 위치 입력 (부스 왼쪽 벽/뒷벽 기준 거리로 표시) */
