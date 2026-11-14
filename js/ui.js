@@ -685,6 +685,17 @@
 
   function renderPanelProps(pane, p, rerender) {
     const b = BS.state.booth;
+    // 크기 · 테두리 (맨 위)
+    pane.appendChild(section('크기 · 테두리',
+      el('div', { class: 'row2' },
+        num({ label: '가로', get: () => p.w, set: (v) => { p.w = v; }, min: 1, max: 2000, what: 'panels' }),
+        num({ label: '세로', get: () => p.h, set: (v) => { p.h = v; }, min: 1, max: 1000, what: 'panels' })),
+      el('div', { class: 'row3' },
+        num({ label: '두께', get: () => p.thick, set: (v) => { p.thick = v; }, min: 0.1, max: 20, step: 0.1, what: 'panels' }),
+        num({ label: '테두리', get: () => p.border, set: (v) => { p.border = v; }, min: 0, max: 20, step: 0.5, what: 'panels' }),
+        color({ label: '테두리색', get: () => p.frameColor, set: (v) => { p.frameColor = v; }, what: 'panels' })),
+    ));
+
     // 부착 방식
     pane.appendChild(section('설치 방식',
       seg({ get: () => p.mount, options: [['wall', '벽에 부착'], ['free', '바닥에 세우기']], set: (v) => {
@@ -712,15 +723,6 @@
       ]),
     ));
 
-    pane.appendChild(section('크기 · 테두리',
-      el('div', { class: 'row2' },
-        num({ label: '가로', get: () => p.w, set: (v) => { p.w = v; }, min: 1, max: 2000, what: 'panels' }),
-        num({ label: '세로', get: () => p.h, set: (v) => { p.h = v; }, min: 1, max: 1000, what: 'panels' })),
-      el('div', { class: 'row3' },
-        num({ label: '두께', get: () => p.thick, set: (v) => { p.thick = v; }, min: 0.1, max: 20, step: 0.1, what: 'panels' }),
-        num({ label: '테두리', get: () => p.border, set: (v) => { p.border = v; }, min: 0, max: 20, step: 0.5, what: 'panels' }),
-        color({ label: '테두리색', get: () => p.frameColor, set: (v) => { p.frameColor = v; }, what: 'panels' })),
-    ));
 
     // 칸 분할
     pane.appendChild(section('칸 분할',
