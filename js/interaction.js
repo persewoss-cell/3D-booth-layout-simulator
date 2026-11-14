@@ -57,10 +57,31 @@
     const S = BS.scene;
     const targets = [S.panelGroup, S.itemGroup, ...BS.booth.wallMeshes];
     const hits = X.ray.intersectObjects(targets, true);
-    for (const h of hits) {
+    const entOf = (o) => { for (let n = o; n; n = n.parent) if (n.userData.entId) return n.userData.entId; return null; };
+    for (let i = 0; i < hits.length; i++) {
+      const h = hits[i];
       if (!h.object.isMesh || h.object.userData.noPick || !visibleChain(h.object)) continue;
       if (h.object.userData.wallKey) return null; // 벽이 먼저 맞음
-      for (let n = h.object; n; n = n.parent) if (n.userData.entId) return { id: n.userData.entId, point: h.point };
+      const id = entOf(h.object);
+      if (!id) continue;
+      const ent = BS.find(id);
+      // 벽 현수막이 겹쳐 있으면, 클릭한 곳에 있는 것 중 가장 작은 현수막을 선택
+      // (큰 현수막 위에 붙은 작은 현수막 → 작은 것, 큰 현수막은 나머지 부분을 누르면 선택)
+      if (ent && ent.kind === 'panel' && ent.mount === 'wall') {
+        let best = { id, point: h.point, area: ent.w * ent.h };
+        for (let j = i + 1; j < hits.length; j++) {
+          const g = hits[j];
+          if (g.distance - h.distance > 8) break;          // 벽 가까이에 붙은 것만
+          if (g.object.userData.wallKey) break;
+          if (!g.object.isMesh || g.object.userData.noPick || !visibleChain(g.object)) continue;
+          const gid = entOf(g.object), ge = gid && BS.find(gid);
+          if (ge && ge.kind === 'panel' && ge.mount === 'wall' && ge.wall === ent.wall && ge.w * ge.h < best.area) {
+            best = { id: gid, point: g.point, area: ge.w * ge.h };
+          }
+        }
+        return { id: best.id, point: best.point };
+      }
+      return { id, point: h.point };
     }
     return null;
   };

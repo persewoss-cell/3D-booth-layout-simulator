@@ -575,7 +575,6 @@
     const isWall = e.kind === 'panel' && e.mount === 'wall';
     const setOverlap = (v) => {
       e.allowOverlap = v || undefined;
-      if (v) bringFront(e); // 덧붙인 현수막이 맨 앞에 보이게
       BS.app.changed('place'); BS.app.commit(); renderSelWarn();
       BS.toast(v ? `"${e.name}"은(는) 다른 현수막 위에 붙여도 경고하지 않습니다` : `"${e.name}"의 겹침 경고를 다시 표시합니다`);
     };
@@ -600,11 +599,9 @@
     }
   }
 
-  /** 현수막을 목록 맨 뒤로 → 겹친 현수막 중 맨 앞(위)에 보임 */
+  /** 겹친 현수막 중 맨 앞(위)에 보이게 (기본은 작은 현수막이 앞) */
   function bringFront(p) {
-    const arr = BS.state.panels;
-    const i = arr.indexOf(p);
-    if (i >= 0 && i !== arr.length - 1) { arr.splice(i, 1); arr.push(p); renderLayers(); }
+    p.front = Math.max(0, ...BS.state.panels.map((q) => q.front || 0)) + 1;
   }
 
   /** 위치 입력 (부스 왼쪽 벽/뒷벽 기준 거리로 표시) */

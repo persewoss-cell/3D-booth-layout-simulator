@@ -274,13 +274,17 @@
 
   /** 위치 반영 (벽 / 바닥) */
   /**
-   * 같은 벽에서 겹친 현수막은 목록 순서대로 앞쪽에 붙인다
-   * (나중 것이 위) → 서로 깜빡이며 섞여 보이지 않게, 현수막 위에 덧붙인 현수막 표현.
+   * 같은 벽에서 겹친 현수막은 작은 것이 앞(위)에 붙는다. [맨 앞으로]를 누른
+   * 현수막(front 값이 큰 것)은 크기와 상관없이 더 앞에.
+   * → 서로 깜빡이며 섞여 보이지 않게, 현수막 위에 덧붙인 현수막 표현.
    * @returns { id: 벽에서 띄울 거리(cm) }
    */
   P.wallOffsets = function () {
     const off = {};
-    const ps = BS.state.panels.filter((p) => p.mount === 'wall' && !p.hidden);
+    const ps = BS.state.panels.filter((p) => p.mount === 'wall' && !p.hidden)
+      .map((p, i) => ({ p, i }))
+      .sort((a, b) => (a.p.front || 0) - (b.p.front || 0) || b.p.w * b.p.h - a.p.w * a.p.h || a.i - b.i)
+      .map((x) => x.p);
     ps.forEach((p, i) => {
       let o = 0.15;
       for (let j = 0; j < i; j++) {
