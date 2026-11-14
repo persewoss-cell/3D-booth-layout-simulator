@@ -160,11 +160,19 @@ window.BS = window.BS || {};
       return Object.assign({
         mode: 'text',          // 'image' | 'text' | 'color' | 'empty'
         title: '', body: '',
-        titleSize: 8,          // 제목 글자 높이(cm)
-        bodySize: 4,           // 본문 글자 높이(cm)
-        color: '#1d2b4f',      // 글자색
+        titleSize: 8,          // 제목 글자 크기(cm, 글꼴 크기 = 한 글자 칸의 높이)
+        bodySize: 4,           // 본문 글자 크기(cm)
+        color: '#1d2b4f',      // 제목 글자색 (본문 색이 없으면 본문도 이 색)
+        bodyColor: null,       // 본문 글자색
+        titleBold: true, bodyBold: false,
+        font: 'sans',          // sans(고딕) | serif(명조) | hand(손글씨)
         bg: '#ffffff',         // 배경색 (단색 모드에서는 칸 색)
-        align: 'center',       // left | center | right
+        align: 'center',       // 가로 정렬: left | center | right
+        valign: 'middle',      // 세로 정렬: top | middle | bottom
+        dx: 0, dy: 0,          // 글자 위치 미세 조정(cm, 오른쪽·아래가 +)
+        lineH: 1.4,            // 줄 간격(글자 크기의 배수)
+        gap: null,             // 제목-본문 간격(cm, 비우면 자동)
+        pad: null,             // 칸 안쪽 여백(cm, 비우면 자동)
         img: null,             // 이미지 asset id
         fit: 'contain',        // contain(맞춤) | cover(채우기) | stretch(늘이기)
       }, over || {});

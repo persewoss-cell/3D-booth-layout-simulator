@@ -113,25 +113,54 @@
     }
 
     // --- 텍스트 ---
-    const pad = Math.min(w, h) * 0.07;
-    const maxW = w - pad * 2;
+    const fam = P.FONTS[cell.font] || BS.FONT;
+    P.ensureFont(cell.font);
+    const pad = cell.pad !== null && cell.pad !== undefined ? Math.max(0, cell.pad * ppc) : Math.min(w, h) * 0.07;
+    const maxW = Math.max(10, w - pad * 2);
     const tfs = Math.max(4, (cell.titleSize || 8) * ppc);
     const bfs = Math.max(4, (cell.bodySize || 4) * ppc);
-    const tLines = cell.title ? wrap(ctx, cell.title, `800 ${tfs}px ${BS.FONT}`, maxW) : [];
-    const bLines = cell.body ? wrap(ctx, cell.body, `400 ${bfs}px ${BS.FONT}`, maxW) : [];
-    const tLH = tfs * 1.22, bLH = bfs * 1.45, gap = (tLines.length && bLines.length) ? tfs * 0.6 : 0;
+    const tFont = `${cell.titleBold === false ? 400 : 800} ${tfs}px ${fam}`;
+    const bFont = `${cell.bodyBold ? 700 : 400} ${bfs}px ${fam}`;
+    const tLines = cell.title ? wrap(ctx, cell.title, tFont, maxW) : [];
+    const bLines = cell.body ? wrap(ctx, cell.body, bFont, maxW) : [];
+    const lh = cell.lineH || 1.4;
+    const tLH = tfs * Math.max(1, lh - 0.2), bLH = bfs * lh;
+    const gap = (tLines.length && bLines.length)
+      ? (cell.gap !== null && cell.gap !== undefined ? cell.gap * ppc : tfs * 0.6) : 0;
     const total = tLines.length * tLH + gap + bLines.length * bLH;
-    let cy = y + Math.max(pad, (h - total) / 2);
+    const va = cell.valign || 'middle';
+    let cy = va === 'top' ? y + pad : va === 'bottom' ? y + h - pad - total : y + (h - total) / 2;
+    cy += (cell.dy || 0) * ppc;
     const al = cell.align || 'center';
-    const tx = al === 'left' ? x + pad : al === 'right' ? x + w - pad : x + w / 2;
+    const tx = (al === 'left' ? x + pad : al === 'right' ? x + w - pad : x + w / 2) + (cell.dx || 0) * ppc;
     ctx.textAlign = al; ctx.textBaseline = 'top';
     ctx.fillStyle = cell.color || '#111';
-    ctx.font = `800 ${tfs}px ${BS.FONT}`;
+    ctx.font = tFont;
     for (const ln of tLines) { ctx.fillText(ln, tx, cy + tfs * 0.08); cy += tLH; }
     cy += gap;
-    ctx.font = `400 ${bfs}px ${BS.FONT}`;
+    ctx.fillStyle = cell.bodyColor || cell.color || '#111';
+    ctx.font = bFont;
     for (const ln of bLines) { ctx.fillText(ln, tx, cy + bfs * 0.1); cy += bLH; }
   }
+
+  /** 글꼴: 고딕 / 명조 / 손글씨 (웹폰트 → 시스템 글꼴 순) */
+  P.FONTS = {
+    sans: null, // = BS.FONT
+    serif: "'Noto Serif KR', 'Batang', '바탕', 'AppleMyungjo', serif",
+    hand: "'Nanum Pen Script', 'Gaegu', cursive",
+  };
+  const FONT_NAME = { serif: 'Noto Serif KR', hand: 'Nanum Pen Script' };
+  const fontWait = {};
+  /** 아직 안 받은 웹폰트면 받아 온 뒤 현수막 글자를 다시 그림 */
+  P.ensureFont = function (key) {
+    const name = FONT_NAME[key];
+    if (!name || fontWait[key] || !document.fonts) return;
+    if (document.fonts.check(`20px "${name}"`)) { fontWait[key] = 'ok'; return; }
+    fontWait[key] = document.fonts.load(`700 40px "${name}"`, '가나다').then(() => {
+      for (const r of P.map.values()) r.needsTex = true;
+      P.sync();
+    }).catch(() => {});
+  };
   P.drawCell = drawCell;
 
   /** 줄바꿈 (한글은 글자 단위, 영문은 단어 단위) */

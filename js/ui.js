@@ -781,15 +781,7 @@
       ed.appendChild(seg({ label: '비율', get: () => c.fit, options: [['contain', '맞춤'], ['cover', '채우기'], ['stretch', '늘이기']], set: (v) => { c.fit = v; }, what: 'panels', after: redraw }));
       ed.appendChild(color({ label: '여백 색', get: () => c.bg, set: (v) => { c.bg = v; }, what: 'panels' }));
     } else if (c.mode === 'text') {
-      ed.appendChild(text({ label: '제목', get: () => c.title, set: (v) => { c.title = v; }, what: 'panels', debounce: 120, after: () => updateCellLabel(p) }));
-      ed.appendChild(text({ label: '본문', get: () => c.body, set: (v) => { c.body = v; }, what: 'panels', multiline: true, rows: 3, debounce: 150 }));
-      ed.appendChild(el('div', { class: 'row2' },
-        num({ label: '제목 글자 높이', get: () => c.titleSize, set: (v) => { c.titleSize = v; }, min: 0.5, max: 100, step: 0.5, what: 'panels' }),
-        num({ label: '본문 글자 높이', get: () => c.bodySize, set: (v) => { c.bodySize = v; }, min: 0.5, max: 100, step: 0.5, what: 'panels' })));
-      ed.appendChild(el('div', { class: 'row2' },
-        color({ label: '글자색', get: () => c.color, set: (v) => { c.color = v; }, what: 'panels', }),
-        color({ label: '배경색', get: () => c.bg, set: (v) => { c.bg = v; }, what: 'panels' })));
-      ed.appendChild(seg({ label: '정렬', get: () => c.align, options: [['left', '왼쪽'], ['center', '가운데'], ['right', '오른쪽']], set: (v) => { c.align = v; }, what: 'panels', after: redraw }));
+      textEditor(ed, p, c, redraw);
     } else if (c.mode === 'color') {
       ed.appendChild(color({ label: '칸 색', get: () => c.bg, set: (v) => { c.bg = v; }, what: 'panels', }));
     } else {
@@ -798,12 +790,131 @@
     if (p.cells.length > 1) {
       ed.appendChild(el('div', { class: 'btn-row' },
         button('이 칸 글꼴·색을 모든 텍스트 칸에 적용', () => {
-          for (const o of p.cells) if (o !== c && o.mode === 'text') { o.titleSize = c.titleSize; o.bodySize = c.bodySize; o.color = c.color; o.bg = c.bg; o.align = c.align; }
+          for (const o of p.cells) if (o !== c && o.mode === 'text') for (const k of TEXT_STYLE_KEYS) o[k] = c[k];
           BS.app.changed('panels'); BS.app.commit(); redraw();
         }, 'sm')));
     }
     box.appendChild(ed);
   }
+  /* ---------------------------------------------------------------
+   * 텍스트 칸 편집기 — 제목/본문 각각 크기·색·굵게, 정렬, 위치 미세 조정,
+   * 글꼴·줄 간격·여백(더 보기)
+   * ------------------------------------------------------------- */
+  const TEXT_STYLE_KEYS = ['titleSize', 'bodySize', 'color', 'bodyColor', 'titleBold', 'bodyBold', 'font', 'bg', 'align', 'valign', 'lineH', 'gap', 'pad'];
+  const ptOf = (cm) => `≈${Math.round(cm * 28.35)}pt`;
+  UI.nudgeStep = UI.nudgeStep || 1;
+  const commitSoon = U.debounce(() => BS.app.commit(), 500);
+
+  /** 작은 숫자 입력 (라벨 + 칸 + 단위) */
+  function mini(label, get, set, o = {}) {
+    const inp = el('input', { type: 'number', step: o.step || 0.5, min: o.min, max: o.max, inputmode: 'decimal', placeholder: o.placeholder || '' });
+    const v0 = get();
+    inp.value = v0 === null || v0 === undefined ? '' : U.fmt(v0);
+    const hint = o.hint ? el('small', { class: 'mini-hint' }, o.hint(v0)) : null;
+    inp.addEventListener('input', () => {
+      if (inp.value === '' && o.allowEmpty) { set(null); BS.app.changed('panels'); return; }
+      let v = parseFloat(inp.value);
+      if (!Number.isFinite(v)) return;
+      if (o.min !== undefined) v = Math.max(o.min, v);
+      if (o.max !== undefined) v = Math.min(o.max, v);
+      set(v);
+      if (hint) hint.textContent = o.hint(v);
+      BS.app.changed('panels');
+    });
+    inp.addEventListener('change', () => BS.app.commit());
+    const w = el('label', { class: 'mini' }, el('span', null, label), el('span', { class: 'mini-in' }, inp, o.unit === '' ? null : el('em', null, o.unit || 'cm')), hint);
+    w.input = inp;
+    return w;
+  }
+  function miniColor(get, set, title) {
+    const inp = el('input', { type: 'color', title });
+    inp.value = get();
+    inp.addEventListener('input', () => { set(inp.value); BS.app.changed('panels'); });
+    inp.addEventListener('change', () => BS.app.commit());
+    return el('label', { class: 'mini-color', title }, inp);
+  }
+  function boldBtn(get, set) {
+    const b = el('button', { type: 'button', class: 'bold-btn' + (get() ? ' on' : ''), title: '굵게' }, 'B');
+    b.onclick = () => { set(!get()); b.classList.toggle('on', get()); BS.app.changed('panels'); BS.app.commit(); };
+    return b;
+  }
+  function iconSeg(get, set, options) {
+    const wrap = el('div', { class: 'seg seg-sm' });
+    options.forEach(([v, t, title]) => {
+      const b = el('button', { type: 'button', class: get() === v ? 'on' : '', title }, t);
+      b.onclick = () => { set(v); wrap.querySelectorAll('button').forEach((x) => x.classList.remove('on')); b.classList.add('on'); BS.app.changed('panels'); BS.app.commit(); };
+      wrap.appendChild(b);
+    });
+    return wrap;
+  }
+
+  function textEditor(ed, p, c, redraw) {
+    // 제목
+    const title = el('textarea', { rows: 1, class: 'txt-title', placeholder: '제목' });
+    title.value = c.title || '';
+    const titleApply = U.debounce(() => { BS.app.changed('panels'); updateCellLabel(p); }, 120);
+    title.addEventListener('input', () => { c.title = title.value; titleApply(); });
+    title.addEventListener('change', () => BS.app.commit());
+    // 본문
+    const body = el('textarea', { rows: 3, placeholder: '본문 (Enter 로 줄바꿈)' });
+    body.value = c.body || '';
+    const bodyApply = U.debounce(() => BS.app.changed('panels'), 150);
+    body.addEventListener('input', () => { c.body = body.value; bodyApply(); });
+    body.addEventListener('change', () => BS.app.commit());
+
+    const styleRow = (sizeKey, colorGet, colorSet, boldKey, boldDefault) => el('div', { class: 'style-row' },
+      mini('글자 크기', () => c[sizeKey], (v) => { c[sizeKey] = v; }, { min: 0.5, max: 200, hint: ptOf }),
+      miniColor(colorGet, colorSet, '글자색'),
+      boldBtn(() => (c[boldKey] === undefined ? boldDefault : !!c[boldKey]), (v) => { c[boldKey] = v; }));
+
+    // 위치 미세 조정
+    const dxIn = mini('가로', () => c.dx || 0, (v) => { c.dx = v; }, { step: 0.5 });
+    const dyIn = mini('세로', () => c.dy || 0, (v) => { c.dy = v; }, { step: 0.5 });
+    const nudge = (ax, d) => {
+      c[ax] = Math.round(((c[ax] || 0) + d * UI.nudgeStep) * 10) / 10;
+      dxIn.input.value = U.fmt(c.dx || 0); dyIn.input.value = U.fmt(c.dy || 0);
+      BS.app.changed('panels'); commitSoon();
+    };
+    const arrow = (t, ax, d, title) => el('button', { type: 'button', class: 'nudge-btn', title, onclick: () => nudge(ax, d) }, t);
+    const pad = el('div', { class: 'nudge-pad' },
+      el('span'), arrow('▲', 'dy', -1, '위로'), el('span'),
+      arrow('◀', 'dx', -1, '왼쪽으로'),
+      el('button', { type: 'button', class: 'nudge-btn reset', title: '처음 위치로', onclick: () => { c.dx = 0; c.dy = 0; dxIn.input.value = '0'; dyIn.input.value = '0'; BS.app.changed('panels'); BS.app.commit(); } }, '⟲'),
+      arrow('▶', 'dx', 1, '오른쪽으로'),
+      el('span'), arrow('▼', 'dy', 1, '아래로'), el('span'));
+    const stepSeg = iconSeg(() => UI.nudgeStep, (v) => { UI.nudgeStep = v; }, [[0.5, '0.5', '0.5cm씩'], [1, '1', '1cm씩'], [5, '5', '5cm씩']]);
+
+    // 더 보기: 글꼴·줄 간격·간격·여백
+    const more = el('details', { class: 'more' }, el('summary', null, '글꼴 · 줄 간격 · 여백'),
+      el('div', { class: 'more-body' },
+        el('div', { class: 'tline' }, el('span', { class: 'tl' }, '글꼴'),
+          iconSeg(() => c.font || 'sans', (v) => { c.font = v; }, [['sans', '고딕'], ['serif', '명조'], ['hand', '손글씨']])),
+        el('div', { class: 'mini-grid' },
+          mini('줄 간격', () => c.lineH || 1.4, (v) => { c.lineH = v; }, { step: 0.1, min: 0.8, max: 4, unit: '배' }),
+          mini('제목↔본문', () => c.gap, (v) => { c.gap = v; }, { min: 0, max: 200, allowEmpty: true, placeholder: '자동' }),
+          mini('안쪽 여백', () => c.pad, (v) => { c.pad = v; }, { min: 0, max: 200, allowEmpty: true, placeholder: '자동' }))));
+    more.open = !!UI.folds['text.more'];
+    more.addEventListener('toggle', () => { UI.folds['text.more'] = more.open; saveFolds(); });
+
+    ed.append(
+      el('div', { class: 'tblock' }, el('div', { class: 'tlabel' }, '제목'), title,
+        styleRow('titleSize', () => c.color, (v) => { c.color = v; }, 'titleBold', true)),
+      el('div', { class: 'tblock' }, el('div', { class: 'tlabel' }, '본문'), body,
+        styleRow('bodySize', () => c.bodyColor || c.color, (v) => { c.bodyColor = v; }, 'bodyBold', false)),
+      el('div', { class: 'tline' }, el('span', { class: 'tl' }, '가로'),
+        iconSeg(() => c.align || 'center', (v) => { c.align = v; }, [['left', '왼쪽', '왼쪽 정렬'], ['center', '가운데', '가운데 정렬'], ['right', '오른쪽', '오른쪽 정렬']])),
+      el('div', { class: 'tline' }, el('span', { class: 'tl' }, '세로'),
+        iconSeg(() => c.valign || 'middle', (v) => { c.valign = v; }, [['top', '위', '위쪽'], ['middle', '가운데', '세로 가운데'], ['bottom', '아래', '아래쪽']])),
+      el('div', { class: 'tline nudge-line' }, el('span', { class: 'tl' }, '위치'),
+        pad,
+        el('div', { class: 'nudge-side' }, el('div', { class: 'mini-grid two' }, dxIn, dyIn),
+          el('div', { class: 'step-line' }, el('small', null, '이동 간격(cm)'), stepSeg))),
+      el('div', { class: 'tline' }, el('span', { class: 'tl' }, '배경'), miniColor(() => c.bg, (v) => { c.bg = v; }, '칸 배경색'),
+        el('small', { class: 'muted', style: { marginLeft: '6px' } }, '글자 크기는 글자 한 칸의 크기(cm)입니다')),
+      more,
+    );
+  }
+
   function updateCellLabel(p) {
     const btns = document.querySelectorAll('#cells-box .cell-btn');
     const c = p.cells[UI.cellIdx];
