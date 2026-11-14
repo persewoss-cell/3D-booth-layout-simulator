@@ -52,6 +52,12 @@
     document.querySelector('#welcome [data-act=open]').onclick = () => BS.cloud.openDialog();
     document.getElementById('btn-insp-close').onclick = () => BS.app.select(null);
     document.getElementById('btn-help').onclick = () => UI.openHelp();
+    // 💾 지금 저장: 클라우드 배치면 바로 저장, 클라우드에 없으면 클라우드에 만들기, 파일로 연 경우 이 브라우저에 저장
+    document.getElementById('btn-save').onclick = () => {
+      const C = BS.cloud;
+      if (C.available()) { if (C.id || C.pendingCreate) C.save({ manual: true }); else C.saveAsCopy(); }
+      else { BS.storage.saveLocal(); BS.toast('이 브라우저에 저장했습니다 (다른 곳에 보관하려면 [저장·인쇄] → JSON 내보내기)'); }
+    };
     document.getElementById('btn-walk-exit').onclick = () => { BS.scene.setMode('orbit'); BS.scene.setView('diag'); };
 
     // 걷기 패드 (누르고 있는 동안 이동)

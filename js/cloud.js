@@ -551,10 +551,15 @@
       st.innerHTML = '';
       if (BS.app.hasDoc) {
         const cloud = !!(C.id || C.pendingCreate);
-        st.append(el('span', { class: 'ss-title' }, (cloud ? '☁ ' : '') + (BS.state.title || '이름 없는 부스')), el('span', { class: 'ss-st' }, ' · ' + statusText()));
+        st.append(el('span', { class: 'ss-title' }, (cloud ? '☁ ' : '') + (BS.state.title || '이름 없는 부스')));
         st.title = `${BS.state.title} — ${statusText()}`;
       }
-      st.classList.toggle('err', C.status === 'error');
+    }
+    // 저장 상태는 툴바의 💾 버튼 오른쪽에
+    const ts = document.getElementById('tb-save-state');
+    if (ts) {
+      ts.textContent = statusText();
+      ts.classList.toggle('err', C.status === 'error' && !!(C.id || C.pendingCreate));
     }
     const box = document.getElementById('cloud-box');
     if (!box) return;

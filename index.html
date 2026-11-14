@@ -61,6 +61,9 @@
     <main id="viewport">
       <div id="toolbar">
         <button id="btn-panel-open" class="tb-btn panel-open" title="설정 패널 열기">☰ <span>설정</span></button>
+        <div class="tb-group">
+          <button class="tb-btn" id="btn-help" title="조작 방법 보기 (?)">조작방법</button>
+        </div>
         <div class="tb-group" role="group" aria-label="시점">
           <button class="tb-btn" data-view="front" title="정면 (1)">정면</button>
           <button class="tb-btn" data-view="left" title="좌측 (2)">좌측</button>
@@ -86,7 +89,8 @@
           <button class="tb-btn" id="btn-undo" title="실행취소 (Ctrl+Z)">↶</button>
           <button class="tb-btn" id="btn-redo" title="다시실행 (Ctrl+Shift+Z)">↷</button>
           <button class="tb-btn" id="btn-shot" title="스크린샷 PNG 저장">📷</button>
-          <button class="tb-btn" id="btn-help" title="조작 방법 보기 (?)">조작방법</button>
+          <button class="tb-btn" id="btn-save" title="지금 저장 (Ctrl+S)">💾</button>
+          <span id="tb-save-state" class="tb-state"></span>
         </div>
       </div>
 

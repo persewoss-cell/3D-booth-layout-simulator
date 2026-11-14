@@ -168,6 +168,12 @@ kbd { background: #f1f3f5; border: 1px solid #d0d5dc; border-bottom-width: 2px; 
 .summary { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip-s { background: var(--soft); border: 1px solid var(--line); border-radius: 99px; padding: 3px 10px; font-size: 12px; }
 
+/* 툴바 저장 상태 (💾 오른쪽) */
+.tb-state { display: flex; align-items: center; padding: 0 12px 0 4px; font-size: 12px; font-weight: 600; color: var(--muted); white-space: nowrap; background: rgba(255,255,255,0.94); }
+.tb-state:empty { display: none; }
+.tb-state.err { color: var(--danger); }
+#btn-save { font-size: 15px; }
+
 /* 조작 방법 팝업 */
 .help-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .help-table td { padding: 6px 4px; border-bottom: 1px solid var(--line); vertical-align: top; }
